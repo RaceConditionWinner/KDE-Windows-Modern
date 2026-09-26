@@ -27,18 +27,61 @@ AbstractItem {
     textFormat: applet?.toolTipTextFormat ?? 0 /* Text.AutoText, the default value */
     active: inVisibleLayout || (systemTrayState.activeApplet !== applet && (text != mainText || subText.length > 0))
 
+    // One of the three Windows 11–style system-cluster applets (Network,
+    // Volume, Battery): these never activate their own native/themed popup
+    // directly, their primary action is always the shared Action Panel.
+    // Right-click context menu, wheel forwarding and tooltips are untouched
+    // below — only the primary-activation paths (onActivated/onClicked) are
+    // special-cased for this item.
+    readonly property bool isSystemClusterItem: applet ? systemTrayState.isSystemClusterApplet(applet) : false
+
+    // See AbstractItem.qml: without this, the reparented native applet
+    // (below, via onAppletChanged) can install its own MouseArea that
+    // wins primary clicks ahead of this item's onClicked/onPressed,
+    // racing with the isSystemClusterItem handling below.
+    exclusivePrimaryInput: isSystemClusterItem
+
+    // Snapshot of whether the Action Panel was the thing showing, read at
+    // press time rather than click time — see the comment on
+    // systemTrayState.actionPanelShowing for why.
+    property bool wasActionPanelShowingOnPress: false
+
     // FIXME: Use an input type agnostic way to activate whatever the primary
     // action of a plasmoid is supposed to be, even if it's just expanding the
     // Plasmoid. Not all plasmoids are supposed to expand and not all plasmoids
     // do anything with onActivated.
     onActivated: pos => {
-        if (applet) {
-            applet.Plasmoid.activated()
+        if (!applet) {
+            return
         }
+        if (isSystemClusterItem) {
+            // Keyboard/accessibility activation has no separate press/click
+            // phases to snapshot across, so read live state here (matching
+            // how ExpanderArrow's own keyboard paths do the same).
+            if (systemTrayState.actionPanelShowing) {
+                systemTrayState.expanded = false
+            } else {
+                systemTrayState.showActionPanel()
+            }
+            return
+        }
+        applet.Plasmoid.activated()
     }
 
     onClicked: mouse => {
         if (!applet) {
+            return
+        }
+        if (isSystemClusterItem) {
+            if (mouse.button === Qt.LeftButton) {
+                if (wasActionPanelShowingOnPress) {
+                    systemTrayState.expanded = false
+                } else {
+                    systemTrayState.showActionPanel()
+                }
+            }
+            // Right-click falls through to onContextMenu (via onPressed
+            // below), same as every other plasmoid.
             return
         }
         //forward click event to the applet
@@ -56,6 +99,11 @@ AbstractItem {
         // SNI has few problems, for example legacy applications that still use XEmbed require mouse to be released.
         if (mouse.button === Qt.RightButton) {
             contextMenu(mouse);
+        } else if (isSystemClusterItem) {
+            // Read at press time, not click time: hideOnWindowDeactivate can
+            // auto-close the popup as soon as this press steals focus from
+            // it, before onClicked fires (see systemTrayState.actionPanelShowing).
+            wasActionPanelShowingOnPress = systemTrayState.actionPanelShowing
         } else {
             const appletItem = applet.compactRepresentationItem ?? applet.fullRepresentationItem
             const mouseArea = findMouseArea(appletItem)
@@ -199,14 +247,19 @@ AbstractItem {
         property: "activeFocusOnTab"
         value: false
         target: plasmoidContainer.applet?.compactRepresentationItem ?? null
-        when: plasmoidContainer?.applet && plasmoidContainer.inHiddenLayout
+        // Also suppressed for cluster items outside the hidden layout:
+        // Tab must land on iconContainer (handled by onActivated's
+        // isSystemClusterItem branch), never on the native applet's own
+        // compactRepresentationItem, which would let Enter/Space activate
+        // the native applet directly instead of the Action Panel.
+        when: plasmoidContainer?.applet && (plasmoidContainer.inHiddenLayout || plasmoidContainer.isSystemClusterItem)
         restoreMode: Binding.RestoreBinding
     }
     Binding {
         property: "activeFocusOnTab"
         value: false
         target: plasmoidContainer.applet?.fullRepresentationItem ?? null
-        when: plasmoidContainer?.applet && plasmoidContainer.inHiddenLayout && !plasmoidContainer.applet.compactRepresentationItem
+        when: plasmoidContainer?.applet && (plasmoidContainer.inHiddenLayout || plasmoidContainer.isSystemClusterItem) && !plasmoidContainer.applet.compactRepresentationItem
         restoreMode: Binding.RestoreBinding
     }
 }

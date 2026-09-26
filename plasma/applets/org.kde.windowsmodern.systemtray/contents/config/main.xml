@@ -92,6 +92,10 @@
     <entry name="showTouchpad" type="Bool">
       <default>true</default>
     </entry>
+    <entry name="quickSettingsOrder" type="StringList">
+      <label>Canonical ordering of the Action Panel's Quick Settings tiles, as an ordered list of stable tile identifiers. Drag-reordering the tiles in the Action Panel updates this. Unknown/duplicate identifiers are dropped and any missing known identifiers are appended automatically.</label>
+      <default>network,bluetooth,airplane,batterySaver,nightLight,colorScheme,dnd,micMute,hotspot</default>
+    </entry>
     <entry name="showKeyboardBrightness" type="Bool">
       <default>true</default>
     </entry>

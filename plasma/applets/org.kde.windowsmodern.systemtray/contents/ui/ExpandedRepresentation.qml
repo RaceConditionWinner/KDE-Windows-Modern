@@ -25,13 +25,26 @@ Item {
     Layout.minimumWidth: 360
     Layout.maximumWidth: 360
 
-    // Height: action panel mode is taller (gridUnit*36); flyouts stay at
-    // gridUnit*24. updateMinSize() grows to the minimum, updateMaxSize()
-    // shrinks to the maximum — both bypass the saved-size flag.
-    Layout.minimumHeight: systemTrayState.activeApplet
+    // Height: flyouts and the hidden-items-only popup are fixed at
+    // gridUnit*24. The Action Panel case is content-driven instead of a
+    // fixed constant: actionPanel (below, in actionPanelMode) is a plain
+    // ColumnLayout whose implicitHeight is the real sum of its tiles and
+    // sliders, so binding to it directly means the popup is always exactly
+    // as tall as the Action Panel actually is — no fixed multiple that can
+    // leave empty space above/below when fewer optional tiles are enabled,
+    // and no cap that would clip it when more are. actionPanelMode itself
+    // has no competing Layout.fillHeight content once hiddenItemsView is
+    // hidden (excluded from the layout entirely while invisible), so
+    // actionPanel.implicitHeight is the only real content-height in that
+    // branch. Forward-referencing actionPanel's id here is safe: it's
+    // declared later in this same file/Component, and ids resolve
+    // reactively regardless of declaration order (container.themedActive
+    // above already relies on the same pattern).
+    readonly property bool compactPopup: systemTrayState.activeApplet || systemTrayState.hiddenItemsRequested
+    Layout.minimumHeight: compactPopup
         ? Kirigami.Units.gridUnit * 24
-        : Kirigami.Units.gridUnit * 36
-    Layout.maximumHeight: systemTrayState.activeApplet
+        : actionPanel.implicitHeight
+    Layout.maximumHeight: compactPopup
         ? Kirigami.Units.gridUnit * 24
         : -1 // no cap for action panel
 
@@ -54,7 +67,11 @@ Item {
         if (!pluginId) return
         const applet = Plasmoid.appletForPluginId(pluginId)
         if (applet) {
-            systemTrayState.setActiveApplet(applet)
+            // This is the one legitimate path to a system-cluster applet's
+            // own themed detail page (e.g. the arrow on the Action Panel's
+            // Network tile) — allowDetailPage=true bypasses the cluster
+            // redirect in setActiveApplet that every other caller hits.
+            systemTrayState.setActiveApplet(applet, undefined, true)
         }
     }
 
@@ -212,7 +229,8 @@ Item {
             }
         }
 
-        // Action Panel mode (no active applet): hidden grid + tiles + sliders
+        // No active applet: either the Hidden Items grid (ExpanderArrow) or
+        // the Action Panel (system cluster) — never both at once.
         ColumnLayout {
             id: actionPanelMode
             Layout.fillWidth: true
@@ -225,7 +243,9 @@ Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.topMargin: Kirigami.Units.smallSpacing
-                visible: root.hiddenLayout.itemCount > 0
+                // ExpanderArrow's one job: this is the only content it
+                // opens, never alongside the Action Panel below.
+                visible: systemTrayState.hiddenItemsRequested && root.hiddenLayout.itemCount > 0
                 KeyNavigation.up: pinButton
                 onVisibleChanged: {
                     if (visible) {
@@ -238,6 +258,9 @@ Item {
             ActionPanel {
                 id: actionPanel
                 Layout.fillWidth: true
+                // The system cluster's one job: this is the only content it
+                // opens, never alongside the Hidden Items grid above.
+                visible: !systemTrayState.hiddenItemsRequested
                 onRequestPage: name => popup.activateFlyout(name)
             }
         }

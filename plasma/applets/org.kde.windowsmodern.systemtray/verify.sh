@@ -67,4 +67,4 @@ else
 fi
 
 echo ""
-echo "To fix issues: cd plasma/applets/org.kde.windowsmodern.systemtray && ./dev.sh"
+echo "To fix issues: cd system-tray && ./dev.sh"

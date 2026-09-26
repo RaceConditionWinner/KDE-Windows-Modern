@@ -40,7 +40,7 @@ sudo apt install cmake extra-cmake-modules \
 ## Build
 
 ```bash
-cd plasma/applets/org.kde.windowsmodern.systemtray
+cd system-tray
 
 cmake -B build -DCMAKE_INSTALL_PREFIX=/usr
 cmake --build build --parallel $(nproc)
@@ -48,19 +48,13 @@ cmake --build build --parallel $(nproc)
 
 ## Install
 
-The recommended way is to use the repository-wide installer, which builds,
-installs the `.so`, removes any conflicting KPackage, prunes stale local
-copies, and restarts plasmashell:
+The recommended way is `dev.sh`, which builds, installs the `.so`, removes
+any conflicting KPackage, prunes stale local copies, and restarts
+plasmashell:
 
 ```bash
-cd plasma/applets/org.kde.windowsmodern.systemtray
+cd system-tray
 ./dev.sh
-```
-
-Or from the repo root:
-
-```bash
-./install.sh systray
 ```
 
 If you prefer a manual install:

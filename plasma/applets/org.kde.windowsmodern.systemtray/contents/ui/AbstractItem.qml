@@ -38,6 +38,25 @@ PlasmaCore.ToolTipArea {
 
     property bool effectivePressed: false
 
+    // When true, this item's own wrapper MouseArea below must be the sole
+    // receiver of primary pointer input for this delegate, even in the
+    // visible (non-hidden) layout — see the z: binding below. Plain
+    // StatusNotifier/BackgroundApp delegates have no reparented native
+    // content capable of installing a competing MouseArea, so this only
+    // matters for PlasmoidItem.qml, which sets it for the system-cluster
+    // applets (Network/Volume/Battery): those reparent a real native
+    // applet's compactRepresentationItem into iconContainer below, and
+    // that native item may install its own MouseArea over the same area.
+    // Without this, z ties are broken by declaration order, which puts
+    // the reparented native content (declared after mouseArea, in the
+    // ColumnLayout below) visually and input-wise on top of mouseArea —
+    // so the native item's own MouseArea, not mouseArea, would receive
+    // the physical click first. That is the root cause of the
+    // native-popup race: whichever MouseArea happens to be hit-tested
+    // first wins, and PlasmoidItem.qml's isSystemClusterItem handling in
+    // onClicked/onPressed never runs at all when the native one wins.
+    property bool exclusivePrimaryInput: false
+
     // Keep these in sync with HiddenItems.qml
     readonly property int margins: Kirigami.Units.smallSpacing
     readonly property int maxTextLines: 2
@@ -63,8 +82,13 @@ PlasmaCore.ToolTipArea {
         propagateComposedEvents: true
         // This needs to be above applets when it's in the grid hidden area
         // so that it can receive hover events while the mouse is over an applet,
-        // but below them on regular systray, so collapsing works
-        z: abstractItem.inHiddenLayout ? 1 : 0
+        // but below them on regular systray, so collapsing works.
+        // exclusivePrimaryInput items (the system cluster) are the one
+        // exception: they must stay above their reparented native applet
+        // content in the visible layout too, so that content's own
+        // MouseArea (if it has one) never receives the primary click —
+        // see the property comment above.
+        z: (abstractItem.inHiddenLayout || abstractItem.exclusivePrimaryInput) ? 1 : 0
         anchors.fill: abstractItem
         hoverEnabled: true
         drag.filterChildren: true
@@ -123,7 +147,8 @@ PlasmaCore.ToolTipArea {
 
         FocusScope {
             id: iconContainer
-            scale: (abstractItem.effectivePressed || mouseArea.containsPress) ? 0.8 : 1
+            scale: (!abstractItem.exclusivePrimaryInput
+                     && (abstractItem.effectivePressed || mouseArea.containsPress)) ? 0.8 : 1
 
             activeFocusOnTab: !abstractItem.inHiddenLayout
             focus: true // Required in HiddenItemsView so keyboard events can be forwarded to this item

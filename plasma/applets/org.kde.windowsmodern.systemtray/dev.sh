@@ -74,11 +74,10 @@ rm -f "$HOME/.local/lib/qt6/plugins/plasma/applets/${APP_ID}.so" 2>/dev/null || 
 info "Installed."
 
 # ── Start plasmashell ────────────────────────────────────────────
-# In batch mode (WM_BATCH=1) the parent 'all' driver restarts Plasma
-# Shell once at the very end — skipping the start here avoids a storm
-# of restarts when systray + icontasks install back-to-back.
+# Set WM_BATCH=1 to skip the restart here, e.g. when this script is one
+# step in a larger scripted install that will restart Plasma Shell itself.
 if [ "${WM_BATCH:-0}" = "1" ]; then
-    info "Installed (batch mode — Plasma Shell will restart at end of 'all')."
+    info "Installed (batch mode — skipping plasmashell restart)."
     exit 0
 fi
 

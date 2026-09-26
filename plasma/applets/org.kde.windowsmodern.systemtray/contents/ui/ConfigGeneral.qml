@@ -29,6 +29,19 @@ KCMUtils.ScrollViewKCM {
     signal configurationChanged
     property bool unsavedChanges: !(changedVisibility.size === 0 && changedShortcuts.size === 0)
 
+    // The Windows 11–style system cluster: Network, Volume and Battery are
+    // always shown next to the ExpanderArrow regardless of configuration
+    // (see calculateEffectiveStatus in systemtraymodel.cpp), so their entry
+    // below is locked to "Always show" rather than left editable. This is a
+    // separate KCM QML document from main.qml/SystemTrayState.qml and can't
+    // share their systemClusterPluginIds property directly — keep this
+    // literal list in sync with those.
+    readonly property var systemClusterPluginIds: [
+        "org.kde.plasma.networkmanagement",
+        "org.kde.plasma.volume",
+        "org.kde.plasma.battery"
+    ]
+
     property bool cfg_scaleIconsToFit
     property int cfg_iconSpacing
     property bool cfg_reverseIconOrder
@@ -397,6 +410,7 @@ KCMUtils.ScrollViewKCM {
         down: false
 
         readonly property bool isPlasmoid: itemType === "Plasmoid"
+        readonly property bool isSystemClusterItem: iconsPage.systemClusterPluginIds.indexOf(itemId) >= 0
 
         contentItem: FocusScope {
             implicitHeight: childrenRect.height
@@ -435,7 +449,9 @@ KCMUtils.ScrollViewKCM {
 
                     readonly property string currentVisibility: iconsPage.changedVisibility.has(listItem.itemId) ? iconsPage.changedVisibility.get(listItem.itemId).replace("-sni", "") : originalVisibility
                     readonly property string originalVisibility: {
-                        if (iconsPage.cfg_showAllItems || iconsPage.cfg_shownItems.indexOf(listItem.itemId) !== -1) {
+                        if (listItem.isSystemClusterItem) {
+                            return "shown";
+                        } else if (iconsPage.cfg_showAllItems || iconsPage.cfg_shownItems.indexOf(listItem.itemId) !== -1) {
                             return "shown";
                         } else if (iconsPage.cfg_hiddenItems.indexOf(listItem.itemId) !== -1) {
                             return "hidden";
@@ -448,7 +464,12 @@ KCMUtils.ScrollViewKCM {
 
                     implicitContentWidthPolicy: QQC2.ComboBox.WidestText
 
-                    enabled: !iconsPage.cfg_showAllItems && listItem.itemId
+                    // Network, Volume and Battery are always shown next to
+                    // the expander (see systemClusterPluginIds above) — the
+                    // tray ignores any other choice for them, so the control
+                    // is locked to communicate that rather than silently
+                    // discarding a choice the person makes here.
+                    enabled: !iconsPage.cfg_showAllItems && listItem.itemId && !listItem.isSystemClusterItem
                     textRole: "text"
                     valueRole: "value"
 
@@ -473,6 +494,11 @@ KCMUtils.ScrollViewKCM {
                             iconsPage.changedVisibility.delete(listItem.itemId);
                         }
                         iconsPage.changedVisibilityChanged();
+                    }
+
+                    QQC2.ToolTip {
+                        visible: listItem.isSystemClusterItem && parent.hovered
+                        text: i18nc("@info:tooltip", "Always shown next to the expander as part of the system cluster") // qmllint disable unqualified
                     }
                 }
 
