@@ -1,34 +1,17 @@
 #!/bin/bash
-# ───────────────────────────────────────────────────────────────────
-#  install-layout.sh — Panel layout template
-# ───────────────────────────────────────────────────────────────────
+# Install the Windows Modern panel layout template.
+set -euo pipefail
 source "$(dirname "$0")/install-lib.sh"
 
 src="$SRC_DIR/plasma/layout-templates/org.kde.windowsmodern.panel"
-
-if [ ! -d "$src" ]; then
-    warn "Panel layout not found — skipping."
-    exit 0
-fi
+[ -d "$src" ] || { err "Panel layout source not found: $src"; exit 1; }
 
 info "Installing panel layout template..."
-ensure_dir "$LAYOUT_DIR"
-rm -rf "$LAYOUT_DIR/org.kde.windowsmodern.panel"
-cp -r "$src" "$LAYOUT_DIR/"
+replace_dir "$src" "$LAYOUT_DIR/org.kde.windowsmodern.panel"
+refresh_sycoca
+info "Panel layout installed successfully."
 
-# Refresh sycoca so the template is discoverable in "Add Panel".
-command -v kbuildsycoca6 &>/dev/null && kbuildsycoca6 2>/dev/null || true
-
-info "Panel layout installed."
-
-# Layout templates cannot replace the panel by themselves — that requires
-# the global theme's --resetLayout (handled by install-lookfeel.sh / 'all').
-if is_batch; then
-    exit 0
+if ! is_batch; then
+    echo "To add it: right-click desktop → Add Panel → Windows Modern Panel."
+    echo "For the Win11 inset look: Panel Configuration → Floating → Applets Only."
 fi
-
-echo ""
-info "To use it: right-click the desktop → Add Panel → Windows Modern Panel."
-echo -e "  ${BOLD}Tip:${RESET} For the authentic Win11 look, after adding the panel:"
-echo -e "  Right-click panel → Show Panel Configuration → Floating → Applets Only"
-echo -e "  (Plasma's scripting API can't set this automatically.)"

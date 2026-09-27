@@ -1,28 +1,16 @@
 #!/bin/bash
-# ───────────────────────────────────────────────────────────────────
-#  install-showdesk.sh — Show Desktop applet (pure QML)
-# ───────────────────────────────────────────────────────────────────
+# Install the Windows Modern Show Desktop applet.
+set -euo pipefail
 source "$(dirname "$0")/install-lib.sh"
 
 src="$SRC_DIR/plasma/applets/org.kde.windowsmodern.showdesktop"
-[ -d "$src" ] || { warn "Show Desktop not found — skipping."; exit 0; }
+[ -d "$src" ] || { err "Show Desktop source not found: $src"; exit 1; }
 
 info "Installing Show Desktop applet..."
-ensure_dir "$APPLETS_DIR"
-rm -rf "$APPLETS_DIR/org.kde.windowsmodern.showdesktop"
-cp -r "$src" "$APPLETS_DIR/"
-info "Show Desktop installed."
+replace_dir "$src" "$APPLETS_DIR/org.kde.windowsmodern.showdesktop"
+refresh_sycoca
+info "Show Desktop installed successfully."
 
-# Refresh sycoca so the new applet is discoverable; restart Plasma Shell
-# so it shows up in the running session. In batch mode the parent 'all'
-# driver does this once at the end.
-if is_batch; then
-    exit 0
-fi
-
-command -v kbuildsycoca6 &>/dev/null && kbuildsycoca6 2>/dev/null || true
-if pgrep -x plasmashell >/dev/null 2>&1; then
+if ! is_batch; then
     restart_plasmashell
-else
-    warn "Plasma Shell not running — Show Desktop will load on next session."
 fi

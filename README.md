@@ -5,6 +5,7 @@ A complete Windows 11-inspired visual transformation for KDE Plasma 6.
 Windows Modern includes matching window decorations, widget styles, color schemes, Plasma desktop themes, global themes, an icon pack, custom applets, a panel layout template, and wallpapers — all available in **dark** and **light** variants.
 
 > **Note:** This theme is designed for **KDE Plasma 6**. It will not work on Plasma 5.
+> **Current Plasma target:** The project is maintained against the current Plasma 6 release line. As of September 27, 2026, KDE's latest stable bugfix release is Plasma 6.7.5; Plasma 6.8 is in beta. The code keeps the Plasma 6.0 metadata compatibility floor while using current Plasma 6 APIs where practical.
 
 ## Screenshots
 
@@ -12,18 +13,12 @@ Windows Modern includes matching window decorations, widget styles, color scheme
 |:---:|:---:|
 | ![Dark desktop](View-1.png) | ![Light desktop](View-2.png) |
 | *Desktop overview* | *Desktop overview* |
-| ![Start Menu](View-3.png) | ![Start Menu](View-9.png) |
-| *Start Menu — Pinned apps* | *Start Menu — Pinned apps* |
-| ![Start Menu All Apps](View-12.png) | ![Start Menu All Apps](View-6.png) |
-| *Start Menu — All Apps* | *Start Menu — All Apps* |
-| ![Start Menu + windows](View-10.png) | ![Start Menu + windows](View-11.png) |
-| *Start Menu with windows* | *Start Menu with windows* |
-| ![System Tray](View-4.png) | ![System Tray](View-7.png) |
+| ![System Tray](View-3.png) | ![System Tray](View-5.png) |
 | *Quick Settings flyout* | *Quick Settings flyout* |
-| ![Window decorations](View-5.png) | ![Window decorations](View-8.png) |
+| ![Window decorations](View-4.png) | ![Window decorations](View-6.png) |
 | *Window decorations* | *Window decorations* |
 
-![Icon taskbar — thumbnail preview](View-13.png)
+![Icon taskbar — thumbnail preview](View-7.png)
 *Icon taskbar — hovering an icon on the icons-only taskbar reveals a Win11-style thumbnail tooltip with a per-tile close button. Dark variant shown.*
 
 ---
@@ -38,12 +33,9 @@ Windows Modern includes matching window decorations, widget styles, color scheme
 | **Plasma desktop themes** | `plasma/desktoptheme/` | Full SVG theme sets for panels, widgets, tooltips, dialogs, switches, and tasks. |
 | **Global themes** | `plasma/look-and-feel/` | `org.kde.windowsmodern.dark` and `org.kde.windowsmodern.light`. |
 | **Panel layout template** | `plasma/layout-templates/` | A Win11-style bottom panel layout you can add from the desktop context menu. |
-| **Custom applets** | `plasma/applets/` | Show Desktop, Start Menu, Digital Clock, C++ System Tray, and C++ Icon Tasks (icons-only taskbar). |
-| **Session lock screen** | `plasma/shells/org.kde.windowsmodern.lockscreen/` | Win11-style lock screen for Meta+L (kscreenlocker). Installed as a complete overlay of the default desktop shell. |
-| **Boot greeter** | `plasma/look-and-feel/.../contents/lockscreen/` + `third_party/plasma-login-manager/` | Patched Plasma Login Manager build that loads a Win11 login screen. Opt-in (system install needs root). |
-| **Icon pack** | `icons/windows-modern/` | Curated Windows-11-style icon theme (~25,000 SVGs). |
+| **Custom applets** | `plasma/applets/` | Show Desktop, Digital Clock, C++ System Tray, and C++ Icon Tasks (icons-only taskbar). |
+| **Icon pack** | `icons/windows-modern/` | Curated Windows-11-style icon theme (~5,000 SVGs; 4,958 in the current source tree). |
 | **Wallpapers** | `wallpaper/` | Dark and light variants. |
-| **App decorations** | `app-decorations/` | Per-app CSD tweaks so non-KDE apps match the theme. Currently: Firefox `userChrome.css` window controls. |
 
 ---
 
@@ -54,8 +46,6 @@ Windows Modern includes matching window decorations, widget styles, color scheme
 - For the **System Tray applet**: a C++ compiler and KDE/Plasma development packages (see [System Tray](#system-tray) below)
 - For the **Icon Tasks applet**: a C++ compiler and a slightly different KDE/Plasma dev set (see [Icon Tasks](#icon-tasks) below)
 - For the **Digital Clock applet**: no extra deps (pure QML).
-- For the **session lock screen**: no extra deps (pure QML, installed as a shell overlay).
-- For the **boot greeter**: a C++ compiler and the Plasma Login Manager build deps (Qt6 ShaderTools, LayerShellQt, libkscreen, PAM) — see [`plasma/look-and-feel/org.kde.windowsmodern.dark/BUILD.md`](plasma/look-and-feel/org.kde.windowsmodern.dark/BUILD.md).
 
 ---
 
@@ -80,14 +70,7 @@ panel layout reset — is applied automatically.
 ./install.sh all --light      # no prompts, Light
 ```
 
-`all` installs in three phases: **atomic pieces** (themes, icons,
-applets, session lock) → **compose** (layout template, look-and-feel)
-→ **apply once** (borders, global theme with layout reset, Kvantum
-engine, single Plasma Shell restart).
-
-> `all` includes the session lock screen (Meta+L). The boot greeter is
-> **opt-in** (it replaces the system login manager) — use
-> `./install.sh greeter`.
+`all` installs in three phases: **atomic pieces** (themes, icons, applets) → **compose** (layout template, look-and-feel) → **apply once** (borders, global theme with layout reset, Kvantum engine, single Plasma Shell restart).
 
 ### Install individual components
 
@@ -100,13 +83,9 @@ needed (Plasma Shell restarts automatically where required).
 ./install.sh lookfeel     # Global themes (asks Light/Dark, applies with layout reset)
 ./install.sh layout       # Panel layout template
 ./install.sh showdesk     # Show Desktop applet (+ restarts shell)
-./install.sh startmenu    # Start Menu applet (+ restarts shell)
 ./install.sh systray      # System Tray (C++ — see below)
 ./install.sh icontasks    # Icon Tasks taskbar (C++ — see below)
 ./install.sh digitalclock # Digital Clock (+ restarts shell)
-./install.sh applets      # All five applets (single restart)
-./install.sh sessionlock  # Session lock screen (Meta+L)
-./install.sh greeter      # Boot greeter (PLM build + system install)
 ```
 
 ---
@@ -130,13 +109,9 @@ wallpaper, and panel layout are all applied for you.
 
 A thin 6-pixel sliver at the far right of the panel. Click it to minimize or restore all windows.
 
-### Start Menu
+### Start button
 
-A Win11-style start menu with Pinned apps, All Apps, and Search pages.
-
-- Install: `./install.sh startmenu`
-- Add it to the panel and remove the default Plasma menu.
-- Implementation plan: [`docs/STARTMENU_PLAN.md`](docs/STARTMENU_PLAN.md)
+The Windows Modern panel layout uses KDE Plasma's stock `org.kde.plasma.kickoff` launcher.
 
 ### Digital Clock
 
@@ -204,7 +179,7 @@ Detailed build instructions: [`plasma/applets/org.kde.windowsmodern.systemtray/B
 
 ### Icon Tasks
 
-A C++ fork of the upstream icons-only task manager (`org.kde.plasma.taskmanager` from plasma-desktop), rebranded as `org.kde.windowsmodern.icontasks` and restyled with Windows 11 tooltip visuals. The C++ backend is preserved unchanged (jump lists, places, recent docs, app categories, smart launcher badges, audio stream matching); only the QML UI is restyled. This is the taskbar used by the Windows Modern panel layout template.
+A C++ fork of the upstream icons-only task manager (`org.kde.plasma.taskmanager` from plasma-desktop), packaged under `org.kde.windowsmodern.icontasks` while using the runtime plugin ID `org.kde.windowsmodern.icontasks`, and restyled with Windows 11 tooltip visuals. The C++ backend is preserved unchanged (jump lists, places, recent docs, app categories, smart launcher badges, audio stream matching); only the QML UI is restyled. This is the taskbar used by the Windows Modern panel layout template.
 
 Win11 refinements over upstream:
 
@@ -272,80 +247,6 @@ Detailed build instructions: [`plasma/applets/org.kde.windowsmodern.icontasks/BU
 
 ---
 
-## Lock screen and boot greeter
-
-Two separate components cover the two places a Windows-style lock/login look
-applies. Both reuse the Win11 dark palette (clock, power menu, password
-field) documented in [`docs/STYLE.md`](docs/STYLE.md).
-
-### Session lock screen (Meta+L)
-
-A Win11-style lock screen for kscreenlocker. kscreenlocker loads the lock
-screen from the **current desktop shell** (`org.kde.plasma.desktop`), so the
-installer creates a complete user-level overlay of that shell — symlinking
-every system directory except `lockscreen`, which is replaced with the
-Windows Modern QML. The shell is always kept complete (an incomplete shell
-triggers the Qt widget fallback).
-
-```bash
-./install.sh sessionlock          # install
-/usr/libexec/kscreenlocker_greet --testing   # test without locking
-./uninstall.sh sessionlock        # restore Breeze
-```
-
-Source: `plasma/shells/org.kde.windowsmodern.lockscreen/`.
-
-### Boot greeter / login screen (Plasma Login Manager)
-
-A patched build of [plasma-login-manager](https://invent.kde.org/plasma/plasma-login-manager)
-(vendored as a git submodule at `third_party/plasma-login-manager/`) that
-loads a Win11 login screen (`Main.qml`) from the dark look-and-feel's
-`contents/lockscreen/`. A single patch
-(`patches/main-cpp.patch`) redirects the greeter to our `Main.qml`.
-
-Because this replaces the system login manager, it is **opt-in** and **not
-included in `install.sh all`**.
-
-```bash
-# 1. Build the patched greeter + install theme for --test mode (user):
-./install.sh greeter
-third_party/plasma-login-manager/build-user/bin/plasma-login-greeter --test
-
-# 2. Install as your actual boot greeter (needs root, typed confirmation):
-sudo bash scripts/install-greeter-live.sh
-
-# Update the PLM submodule to a new upstream version:
-./scripts/update-plm.sh Plasma/6.7
-```
-
-Keep a TTY (Ctrl+Alt+F3) open before the live install. Revert:
-
-```bash
-sudo bash scripts/uninstall-greeter-system.sh   # restore distro greeter
-./uninstall.sh greeter                          # remove user theme + revert patches
-```
-
-Build dependencies differ slightly from the applets (PLM adds Qt6 ShaderTools,
-LayerShellQt, libkscreen, and PAM). Full per-distro lists:
-[`plasma/look-and-feel/org.kde.windowsmodern.dark/BUILD.md`](plasma/look-and-feel/org.kde.windowsmodern.dark/BUILD.md).
-
----
-
-## App decorations
-
-Optional per-app stylesheets that make non-KDE apps blend in with the Windows Modern title bar. These are not applied by the installer — copy them into the app's config manually.
-
-### Firefox
-
-Replaces Firefox's CSD window buttons (minimize / maximize / restore / close) with flat white MDL2 SVGs and the Windows close-hover color (`#c42b1c`). Button size matches Aurorae metrics (46×30).
-
-- Copy [`app-decorations/firefox/userChrome.css`](app-decorations/firefox/userChrome.css) into your Firefox profile's `chrome/` folder.
-- In `about:config`, set `toolkit.legacyUserProfileCustomizations.stylesheets` to `true`, then fully restart Firefox.
-
-Full instructions: [`app-decorations/firefox/README.md`](app-decorations/firefox/README.md)
-
----
-
 ## Uninstall and verify
 
 ```bash
@@ -354,9 +255,6 @@ Full instructions: [`app-decorations/firefox/README.md`](app-decorations/firefox
 ./uninstall.sh icons         # Remove icon pack
 ./uninstall.sh systray       # Remove system tray plugin
 ./uninstall.sh digitalclock  # Remove Digital Clock applet
-./uninstall.sh sessionlock   # Restore Breeze lock screen (Meta+L)
-./uninstall.sh greeter       # Remove user greeter theme + revert patches
-./uninstall.sh greetersystem # Restore system greeter binary (needs sudo)
 ```
 
 Run a project health check:
@@ -391,7 +289,7 @@ See [`plasma/applets/org.kde.windowsmodern.systemtray/BUILD.md`](plasma/applets/
 ./scripts/capture-screenshots.sh
 ```
 
-Walks you through each desktop state (dark/light overview, start menu, system tray, window decorations) and captures optimized PNGs.
+Walks you through the remaining desktop showcase states (dark/light overview, system tray, window decorations, and icon-task thumbnails) and captures optimized PNGs.
 
 ---
 
@@ -400,7 +298,6 @@ Walks you through each desktop state (dark/light overview, start menu, system tr
 | Document | Description |
 |----------|-------------|
 | [`docs/STYLE.md`](docs/STYLE.md) | Complete visual style specification: palette, desktop theme, panel layout, applet specs, and repository structure. |
-| [`docs/STARTMENU_PLAN.md`](docs/STARTMENU_PLAN.md) | Implementation plan for the Start Menu applet. |
 | [`docs/SYSTEMTRAY_ARCHITECTURE.md`](docs/SYSTEMTRAY_ARCHITECTURE.md) | Architecture and history of the custom system tray. |
 | [`docs/SYSTEMTRAY_DECISION.md`](docs/SYSTEMTRAY_DECISION.md) | Architecture decision record for the C++ fork approach. |
 | [`docs/PLASMA_SYSTEMTRAY_ARCHITECTURE.md`](docs/PLASMA_SYSTEMTRAY_ARCHITECTURE.md) | Reverse-engineered upstream Plasma system tray internals. |
@@ -460,7 +357,6 @@ systemctl --user restart plasma-plasmashell.service
 - **[Zren / Chris Holland](https://github.com/Zren)** — upstream Show Desktop applet (`win7showdesktop`).
 - **[mjkim0727](https://github.com/mjkim0727/Eleven-icon-theme)** — **Eleven** icon pack (Windows 11 style icons).
 - **[vinceliuice](https://github.com/vinceliuice/Fluent-icon-theme)** — **Fluent** icon pack.
-- **[Eisteed](https://github.com/Eisteed/menu-11-next)** — **Menu11 - Next** start menu plasmoid (forked from [adhec/OnzeMenuKDE](https://github.com/adhec/OnzeMenuKDE)), used as a reference for the Windows Modern Start Menu.
 - Additional icon pack sources are credited in
   [`ATTRIBUTION.md`](ATTRIBUTION.md).
 

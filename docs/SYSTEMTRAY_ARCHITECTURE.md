@@ -82,63 +82,43 @@ readonly property Connections rootConnections: Connections {
 
 ## Installation
 
-The applet is a C++ plugin loaded from a shared library (`.so`). **It must NOT be installed as a KPackage plasmoid** (see [Critical Bug below](#critical-bug-duplicate-kpackage-installation)).
+The applet is a C++ plugin loaded from a shared library (`.so`). It is deployed as a compiled Plasma applet with embedded QML and embedded JSON metadata. A full KPackage directory containing `contents/ui` must not be installed because it creates a second implementation of the same plugin ID and can reproduce the dark-rectangle popup bug.
 
 ```bash
 # Build and deploy
 ./dev.sh
 
-# What dev.sh does:
-# 1. cmake --build  → compile .so with embedded QML
-# 2. Stop plasmashell, fix layout config if corrupted
-# 3. Install .so to /usr/lib64/qt6/plugins/plasma/applets/
-# 4. Remove any stale KPackage at /usr/share/plasma/plasmoids/
-# 5. Restart plasmashell
+# Or from the repository root
+./install.sh systray
 ```
 
-The QML files are embedded in the `.so` via `plasma_add_applet(QML_SOURCES ...)` — same as the stock `org.kde.plasma.systemtray`.
+`dev.sh` resolves the Qt6 plugin directory with `qtpaths6` when available, then `pkg-config`, and finally a small set of standard fallback locations. The resulting library is installed under `<Qt6 plugin dir>/plasma/applets/`.
 
----
+The QML files are embedded in the `.so` via `ecm_target_qml_sources`; the plugin also embeds `metadata.json` through `K_PLUGIN_CLASS_WITH_JSON`. The layout scripts use Plasma's current `knownWidgetTypes` API before calling `addWidget()` and fall back to the stock system tray when the compiled plugin is not discoverable.
 
 ## Critical Bug: Duplicate KPackage Installation
 
 ### Symptom
 
-A dark rectangle (following the global theme) appeared alongside the system tray popup when clicking individual icons (network, volume, battery, etc.). The expander arrow did NOT have this issue.
+A dark rectangle appeared alongside the system tray popup when clicking individual icons.
 
 ### Root Cause
 
-The `CMakeLists.txt` and `install.sh` installed the applet in **two** locations:
+The old implementation installed the same applet ID both as a compiled plugin and as a full QML KPackage. That created duplicate applet registrations and could route child-applet embedding through the package instance.
 
-1. **`.so` plugin** at `/usr/lib64/qt6/plugins/plasma/applets/org.kde.windowsmodern.systemtray.so`
-2. **KPackage plasmoid** at `/usr/share/plasma/plasmoids/org.kde.windowsmodern.systemtray/metadata.json` + `contents/`
+### Current Plasma 6 deployment model
 
-This created a duplicate applet registration. The framework found two instances with the same plugin ID. When a child icon was clicked, the framework's child-applet-embedding lookup matched the **KPackage instance** (which had no AppletPopup with content), creating an empty themed popup window — the dark rectangle.
+The Windows Modern tray is intentionally a compiled applet plugin only. Its QML is embedded into the `.so`, and its JSON metadata is embedded into the plugin. No full `contents/` KPackage copy is installed.
 
-The stock `org.kde.plasma.systemtray` is installed ONLY as a `.so` (no KPackage), which is why it never had this issue.
+Do not reintroduce a package directory containing `contents/ui` for this applet. The runtime must have one implementation of the plugin ID.
 
-### Fix
+### Local plugin shadowing
 
-1. **Removed `install(DIRECTORY ...)` from `CMakeLists.txt`** — eliminated KPackage QML installation at build time
-2. **Modified `dev.sh`** to install only the `.so` (with embedded QML) and keep a minimal metadata-only KPackage for scripting API discovery (`addWidget()`)
-3. **`.so`-only deployment** matching the stock system tray pattern exactly — QML embedded in `.so`, no duplicate applet registration
+A stale copy of the plugin at `~/.local/lib*/qt6/plugins/plasma/applets/org.kde.windowsmodern.systemtray.so` can shadow the system-installed copy on some Qt setups. The installer removes known local copies automatically. If manual cleanup is required, remove stale local copies and restart Plasma.
 
-After this fix, the system tray behaves identically to the stock `org.kde.plasma.systemtray` — one popup for expander, one popup for icons, no dark rectangles.
+### Theme layout compatibility
 
-### Note: Local Plugin Shadowing
-
-A stale copy of the plugin at
-`~/.local/lib64/qt6/plugins/plasma/applets/org.kde.windowsmodern.systemtray.so`
-(or `~/.local/lib/qt6/plugins/...`) will be loaded in preference to the
-system-installed `/usr/lib64/...` copy. Symptom: edits appear to have no
-effect after running the install script. The install/uninstall scripts now
-remove these local copies automatically.
-
-### Note: Theme Layout Compatibility
-
-The Plasma scripting API's `addWidget()` requires the plugin to be discoverable via KPackage. A minimal KPackage (metadata.json only, no QML) is installed at `/usr/share/plasma/plasmoids/` for this purpose. The QML remains embedded in the `.so`. Theme layout scripts fall back to the stock system tray if our fork isn't found.
-
----
+The current Plasma scripting API exposes `knownWidgetTypes` as the installed-widget capability list. Windows Modern checks that list before adding the custom tray and falls back to `org.kde.plasma.systemtray` if the custom plugin is unavailable.
 
 ## History: Original Windows 11-Style Custom Tray (v0)
 

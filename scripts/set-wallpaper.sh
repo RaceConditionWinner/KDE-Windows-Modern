@@ -22,8 +22,9 @@ fi
 
 # Locate the installed wallpaper package directory.
 WALLPAPER_DIR=""
+USER_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 for dir in \
-    "$HOME/.local/share/wallpapers/$WALLPAPER_ID" \
+    "$USER_DATA_HOME/wallpapers/$WALLPAPER_ID" \
     "/usr/share/wallpapers/$WALLPAPER_ID"; do
     if [ -d "$dir" ]; then
         WALLPAPER_DIR="$dir"

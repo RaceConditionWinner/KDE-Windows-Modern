@@ -1,28 +1,16 @@
 #!/bin/bash
-# ───────────────────────────────────────────────────────────────────
-#  install-digitalclock.sh — Digital Clock applet (pure QML)
-# ───────────────────────────────────────────────────────────────────
+# Install the Windows Modern Digital Clock applet.
+set -euo pipefail
 source "$(dirname "$0")/install-lib.sh"
 
 src="$SRC_DIR/plasma/applets/org.kde.windowsmodern.digitalclock"
-[ -d "$src" ] || { warn "Digital Clock not found — skipping."; exit 0; }
+[ -d "$src" ] || { err "Digital Clock source not found: $src"; exit 1; }
 
-info "Installing Digital Clock (Windows Modern) applet..."
-ensure_dir "$APPLETS_DIR"
-rm -rf "$APPLETS_DIR/org.kde.windowsmodern.digitalclock"
-cp -r "$src" "$APPLETS_DIR/"
-info "Digital Clock (Windows Modern) installed."
+info "Installing Digital Clock applet..."
+replace_dir "$src" "$APPLETS_DIR/org.kde.windowsmodern.digitalclock"
+refresh_sycoca
+info "Digital Clock installed successfully."
 
-# Refresh sycoca so the new applet is discoverable; restart Plasma Shell
-# so it shows up in the running session. In batch mode the parent 'all'
-# driver does this once at the end.
-if is_batch; then
-    exit 0
-fi
-
-command -v kbuildsycoca6 &>/dev/null && kbuildsycoca6 2>/dev/null || true
-if pgrep -x plasmashell >/dev/null 2>&1; then
+if ! is_batch; then
     restart_plasmashell
-else
-    warn "Plasma Shell not running — Digital Clock will load on next session."
 fi

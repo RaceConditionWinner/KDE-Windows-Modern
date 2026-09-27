@@ -56,19 +56,31 @@ function createWindowsModernPanel(screenId) {
     // Order of addWidget calls determines left-to-right order in the panel.
     // Custom applets fall back to stock Plasma widgets if not installed.
 
-    // 1. Left expanding spacer — pushes the centered Start + tasks group to
+    // Current Plasma scripting API exposes knownWidgetTypes. Prefer the custom
+// plugin only when Plasma can discover it, then fall back to the stock widget.
+// This avoids creating a broken placeholder when a compiled applet is absent
+// or failed to load.
+function addWidgetWithFallback(primary, fallback) {
+    if (typeof knownWidgetTypes !== "undefined" && knownWidgetTypes.includes(primary)) {
+        var custom = panel.addWidget(primary);
+        if (custom) {
+            return custom;
+        }
+    }
+    return panel.addWidget(fallback);
+}
+
+// 1. Left expanding spacer — pushes the centered Start + tasks group to
     //    the middle of the panel, matching Win11's centered taskbar.
     var spacerLeft = panel.addWidget("org.kde.plasma.panelspacer");
 
-    // 2. Start button — custom Win11 start menu, or fall back to Kickoff.
-    var start = panel.addWidget("org.kde.windowsmodern.startmenu");
-    if (!start) { start = panel.addWidget("org.kde.plasma.kickoff"); }
+    // 2. Start button — use the stock Plasma Kickoff launcher.
+    var start = panel.addWidget("org.kde.plasma.kickoff");
     start.currentConfigGroup = new Array("General");
     start.writeConfig("icon", "start-here");
 
-    // 3. Icon-only task manager — custom Win11 style, or fall back to stock.
-    var tasks = panel.addWidget("org.kde.plasma.icontasks");
-    if (!tasks) { tasks = panel.addWidget("org.kde.plasma.icontasks"); }
+    // 3. Icon-only task manager — custom Win11 style, with stock Plasma fallback.
+    var tasks = addWidgetWithFallback("org.kde.windowsmodern.icontasks", "org.kde.plasma.taskmanager");
     tasks.currentConfigGroup = new Array("General");
     tasks.writeConfig("launchers", "");
     tasks.writeConfig("showOnlyCurrentScreen", "false");
@@ -81,8 +93,7 @@ function createWindowsModernPanel(screenId) {
     var spacerRight = panel.addWidget("org.kde.plasma.panelspacer");
 
     // 5. System tray — custom Win11/10 hybrid tray, or fall back to stock.
-    var tray = panel.addWidget("org.kde.windowsmodern.systemtray");
-    if (!tray) { tray = panel.addWidget("org.kde.plasma.systemtray"); }
+    var tray = addWidgetWithFallback("org.kde.windowsmodern.systemtray", "org.kde.plasma.systemtray");
 
     // 6. Digital clock — Win11 puts the clock at the far right, with the date
     //    stacked below the time. Use the custom Windows Modern digital clock
@@ -94,8 +105,7 @@ function createWindowsModernPanel(screenId) {
     //    use24hFormat = 1 lets the clock follow the user's locale/region
     //    defaults instead of forcing 12- or 24-hour time.
     //    dateDisplayFormat = 2 forces the date below the time (BelowTime).
-    var clock = panel.addWidget("org.kde.windowsmodern.digitalclock");
-    if (!clock) { clock = panel.addWidget("org.kde.plasma.digitalclock"); }
+    var clock = addWidgetWithFallback("org.kde.windowsmodern.digitalclock", "org.kde.plasma.digitalclock");
     clock.currentConfigGroup = new Array("Appearance");
     clock.writeConfig("autoFontAndSize", "true");
     clock.writeConfig("showDate", "true");
@@ -106,8 +116,7 @@ function createWindowsModernPanel(screenId) {
     clock.writeConfig("expandedWidth", "320");
 
     // 7. Show Desktop — custom Win11-style thin sliver, or fall back to stock.
-    var peek = panel.addWidget("org.kde.windowsmodern.showdesktop");
-    if (!peek) { peek = panel.addWidget("org.kde.plasma.showdesktop"); }
+    var peek = addWidgetWithFallback("org.kde.windowsmodern.showdesktop", "org.kde.plasma.showdesktop");
     peek.currentConfigGroup = new Array("General");
     peek.writeConfig("size", "6");
 

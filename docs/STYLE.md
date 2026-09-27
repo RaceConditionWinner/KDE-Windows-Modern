@@ -112,7 +112,7 @@ The `contents/layout.js` creates:
      Windows-logo icon is provided, with both a scalable version and a
      fixed `48/apps/start-here.svg` that draws the logo at 30px so it
      matches the app-icon size on a 48px panel.
-  3. **Icon-only task manager** — `org.kde.plasma.icontasks` (grouped
+  3. **Icon-only task manager** — `org.kde.windowsmodern.icontasks` (grouped
      by app, sits immediately to the right of Start in the centered
      group)
   4. **Right expanding spacer** — `org.kde.plasma.panelspacer`. Separates
@@ -166,40 +166,6 @@ Config keys (`contents/config/main.xml`): `size` (int, default 6),
 `edgeColor` (string, empty = theme text color @ 50% alpha for the hover
 line). Installed to `~/.local/share/plasma/plasmoids/` (or
 `/usr/share/plasma/plasmoids/` as root) by `install.sh`.
-
-#### Start Menu applet (`plasma/applets/org.kde.windowsmodern.startmenu/`)
-
-A Win11-style start menu ported from the reference plasmoid
-`com.jeysef.windowsmodernstartmenu`. The monolithic 3307-line
-`MenuRepresentation.qml` is split into a clean shell (`MenuRepresentation.qml`)
-plus independent pages (`PinnedPage.qml`, `AllAppsPage.qml`, `SearchPage.qml`)
-and shared grid components (see file tree below).
-
-**Phase 1 (complete):**
-- `PlasmaCore.Dialog` with `Floating` location, positioned relative to the
-  panel button via `parent.mapToGlobal`.
-- Search field with rounded corners (`radius: smallSpacing*3`) and subtle
-  border (12% text color alpha), Segoe UI font.
-- Left column switches between three states (not a `SwipeView`): Pinned
-  (favorites vertical list), All Apps (alphabetical vertical list),
-  Search (filter pills + runner results).
-- Right column with user avatar and a vertical list of system locations
-  (Home, Documents, Pictures, Music, etc.).
-- Compound bottom bar with a search field on the left and a split
-  "Shut down" button on the right that opens a power-options popup.
-- `AToolButton` with rounded corners (`radius: smallSpacing`), gray border,
-  subtle hover (rgba 0.3).
-- Config UI: icon picker, icon sizes, display position, right-column
-  visibility, all-apps sort mode.
-
-**Phase 2 (pending):** pinned folders, all-apps folders, launch-frequency
- tracking, smart context labels, and a `/`-prefix command palette.
- See `docs/STARTMENU_PLAN.md` for the full plan.
-
-**Imports:** Modern Qt6 style (no version numbers except
-`org.kde.plasma.private.kicker 0.1` and `org.kde.kitemmodels 1.0`).
-`KPlugin.Id`: `org.kde.windowsmodern.startmenu`, License `GPL-3.0-or-later`,
-Author `Jeysef`.
 
 #### Digital Clock applet (`plasma/applets/org.kde.windowsmodern.digitalclock/`)
 
@@ -261,8 +227,9 @@ See `docs/SYSTEMTRAY_ARCHITECTURE.md` and
 #### Icon Tasks applet (`plasma/applets/org.kde.windowsmodern.icontasks/`)
 
 A C++ fork of the upstream `org.kde.plasma.taskmanager` (from
-plasma-desktop), rebranded as `org.kde.windowsmodern.icontasks` and
-restyled with Windows 11 tooltip visuals. The C++ backend is preserved
+plasma-desktop), packaged under `org.kde.windowsmodern.icontasks` while
+using the runtime plugin ID `org.kde.windowsmodern.icontasks`, and restyled with
+Windows 11 tooltip visuals. The C++ backend is preserved
 unchanged (jump lists, places, recent docs, app categories, smart
 launcher badges, audio stream matching). The QML UI is forked from
 upstream with minimal Win11 refinements:
@@ -286,8 +253,9 @@ not be installed. Build and install with `./dev.sh` or
 `./install.sh icontasks`. See
 `plasma/applets/org.kde.windowsmodern.icontasks/BUILD.md`.
 
-The panel layout template and look-and-feel layout scripts use
-`org.kde.windowsmodern.icontasks` instead of `org.kde.plasma.icontasks`.
+The panel layout template and look-and-feel layout scripts target the compiled
+runtime ID `org.kde.windowsmodern.icontasks` and fall back to the stock
+`org.kde.plasma.taskmanager` when the custom plugin is unavailable.
 
 #### Popups / tooltips
 
@@ -372,7 +340,7 @@ background, so the switch was invisible against popups.
 
 #### Taskbar (`widgets/tasks.svg`)
 
-Rendered by the upstream `org.kde.plasma.icontasks` applet (the panel
+Rendered by the Windows Modern `org.kde.windowsmodern.icontasks` applet (the panel
 layout template uses it). The SVG supplies the hover/focus background
  visuals:
 
@@ -399,307 +367,15 @@ layout template uses it). The SVG supplies the hover/focus background
 
 #### Icons
 
-165 SVG icon files inherited from Win11OS-dark. A few icons
-(`caffeine.svg`, `microphone.svg`, `update.svg`) have their own
-embedded color schemes; these are intentional and not modified.
+Location: `icons/windows-modern/` (gitignored because of its size)
 
-### Aurorae Window Decoration
-
-Location: `aurorae/windows-modern-{dark,light}-aurorae/`
-
-#### Layout (`*.rc`)
-
-```
-BorderTop=1        BorderBottom=1      BorderLeft=1      BorderRight=1
-PaddingTop=0       PaddingBottom=0     PaddingLeft=0     PaddingRight=0
-TitleHeight=30     TitleHeightMaximized=30
-ButtonWidth=46     ButtonHeight=30     ButtonSpacing=0
-TitleEdgeLeft=8    ExplicitButtonSpacer=10
-```
-
-- 1px borders on all sides, zero padding — window content goes
-  edge-to-edge with only the 1px decoration border.
-- Title height 30px (authentic Win11 proportions).
-- `BorderSize=Tiny` is auto-set in kwinrc by `install.sh`.
-
-#### Decoration SVG (`decoration.svg`)
-
-Rewritten with minimal 1px border elements:
-- Edge elements (top/bottom/left/right) are 1x1px.
-- Corner elements are 2x2px (1px border + 1px fill overlap).
-- Active border: `#3F3F3F` (dark) / `#E5E5E5` (light).
-- Inactive border: `#2A2A2A` (dark) / `#D5D5D5` (light).
-- Background via `currentColor` / `ColorScheme-Background`.
-
-#### Button SVGs
-
-- 46x30px buttons, icon centered in a 22x22 area.
-- Normal state: transparent background (0.003 opacity hit rect).
-- Hover state: close = `#C42B1C` red, others = subtle overlay.
-- Pressed state: `#000000` at 0.1 opacity.
-- Icons: `#FFFFFF` (dark theme) / `#1E1E1E` (light theme).
-- Deactivated: icon at 0.1 opacity.
-
-### Kvantum Qt Style
-
-Location: `Kvantum/Windows-modern/`
-
-SVG-based Qt widget theme. The directory contains the base light theme
-(`Windows-modern.kvconfig` / `.svg`) and its dark variant
-(`Windows-modernDark.kvconfig` / `.svg`). KDE switches between them
-automatically by using the `kvantum` and `kvantum-dark` widget styles.
-Based on the **Fluent** Kvantum theme by
-Vince Liuice (itself derived from KvAdapta by Tsu Jan), with colors
-remapped to authentic Win11 values. The Fluent base was chosen over
-the previous KvAdapta/Materia base because it already ships Win11
-proportions (`check_size=20`, `progressbar_thickness=10`,
-`spread_menuitems=true`, `attach_active_tab=true`,
-`toolbutton_style=0`, `merge_menubar_with_toolbar=false`) and a
-cleaner SVG element set (`flatbutton`, `tbutton`, proper inactive
-text colors, fuller frame definitions).
-
-#### Compositing model
-
-Both variants use the **translucent model** — `composite=true`,
-`translucent_windows=true`, `blurring=true`, `popup_blurring=true`.
-Kvantum handles popup shadows (`menu_shadow_depth=5`,
-`tooltip_shadow_depth=2`, `shadowless_popup=false`) and acrylic-style
-blur behind menus/tooltips. The SVG `menu-shadow-*` and
-`tooltip-shadow-*` element trees are intact and render as soft drop
-shadows via compositing.
-
-#### `[GeneralColors]` palette
-
-The Fluent neutrals were replaced with authentic Win11 values sourced
-from WinUI 3. Win11 uses different accent shades per mode:
-`SystemAccentColorLight2` (`#4CC2FF`) in dark mode and
-`SystemAccentColorDark1` (`#0067C0`) in light mode — both derived from
-the base `SystemAccentColor` (`#0078D4`). The accent is baked into the
-SVG indicator elements (checkbox marks, radio dots, progressbar fill,
-focus rings).
-
-| Token | Dark | Light |
-|---|---|---|
-| `window` | `#202020` | `#F9F9F9` |
-| `base` / `alt.base` | `#2C2C2C` | `#FFFFFF` / `#F8F8F8` |
-| `button` | `#2C2C2C` | `#F3F3F3` |
-| `light` (hover) | `#3F3F3F` | `#E9E9E9` |
-| `mid.light` | `#3F3F3F` | `#E9E9E9` |
-| `dark` | `#1F1F1F` | `#E5E5E5` |
-| `highlight` / `link` | `#4CC2FF` | `#0067C0` |
-| `inactive.highlight` | `#4CC2FF74` | `#0067C074` |
-| `text` | `#FFFFFF` | `#1E1E1E` |
-| `disabled.text` | `#5A5A5A` | `#A0A0A0` |
-
-Per-section `text.*.color` values throughout the config follow the
-same mapping (dark = `#FFFFFF`, light = `#1E1E1E`), with `#ffffff`
-preserved for pressed/toggled states (white-on-accent) and the
-per-variant accent (`#4CC2FF` dark / `#0067C0` light) for GroupBox
-focus labels.
-
-#### Key `[%General]` behavior
-
-Inherited from Fluent (already Win11-correct):
-- `spread_menuitems=true` — menu items span full menu width (Win11).
-- `attach_active_tab=true` — active tab attaches to content below.
-- `merge_menubar_with_toolbar=false`, `toolbutton_style=0`.
-- `progressbar_thickness=10`, `check_size=20` (Win11 proportions).
-- `transient_scrollbar=true` (auto-hide scrollbars).
-- `animate_states=false` (Fluent disables state animations).
-- `left_tabs=true`, `combo_as_lineedit=true`, `combo_menu=true`.
-- `x11drag=menubar_and_primary_toolbar`.
-
-#### `[Hacks]`
-
-Inherited from Fluent: `transparent_ktitle_label=true`,
-`transparent_dolphin_view=true`, `transparent_pcmanfm_sidepane=true`,
-`transparent_pcmanfm_view=true`, `transparent_menutitle=true`,
-`transparent_arrow_button=true`, `respect_darkness=true` (both
-variants), `force_size_grip=true`, `iconless_pushbutton=false` (both
-variants), `single_top_toolbar=true`, `kcapacitybar_as_progressbar=true`.
-
-#### SVG element fills
-
-The Fluent SVG fills were remapped to Win11 neutrals. The accent was
-updated to per-variant shades (`#4CC2FF` dark / `#0067C0` light). Key
-mappings:
-
-| Fluent color | Win11 target | Role |
-|---|---|---|
-| `#2B2B2B` | `#2C2C2C` | base/button/control backgrounds |
-| `#333333` | `#2C2C2C` (dark) / `#F9F9F9` (light) | menu body, dock, header |
-| `#3C3C3C` | `#3F3F3F` | header/dock borders |
-| `#dedede` | `#FFFFFF` (dark text/icons) | secondary text, unchecked marks |
-| `#000000` | unchanged | bevel/shadow overlays (translucent) |
-| `#0078D4` | `#4CC2FF` (dark) / `#0067C0` (light) | accent (checkbox/radio marks, progress, focus) |
-| `#202020` | unchanged | window/menubar/titlebar bg (dark) |
-| `#f04a50` | `#C42B1C` (close) / text color (others) | mdi caption-button hover glyphs |
-| `#0078D4` (pressed) | text color | mdi caption-button pressed glyphs |
-| `#b74aff` | unchanged | shadow hint markers (arbitrary) |
-
-Shadow elements (`menu-shadow-*`, `tooltip-shadow-*`) use gradient
-fills and `#343031`/`#26272a` shells — left intact as they render
-correctly under compositing.
-
-### Color Schemes
-
-Location: `color-schemes/WindowsModern{Dark,Light}.colors`
-
-KDE color scheme files defining system-wide colors for widgets,
-selections, tooltips, etc. Rewritten with Win11 values:
-`ColorScheme=WindowsModernDark` / `WindowsModernLight` (the previous
-`McMojave` / `McMojaveLight` leftovers were removed). Dark uses
-`BackgroundNormal=32,32,32` for windows and `44,44,44` for buttons;
-light uses `249,249,249` / `243,243,243`. Selection accent is
-`76,194,255` (`#4CC2FF`) in dark and `0,103,192` (`#0067C0`) in light —
-matching Win11's `SystemAccentColorLight2` and `SystemAccentColorDark1`
-respectively.
-
-### Look-and-Feel
-
-Location: `plasma/look-and-feel/org.kde.windowsmodern.{dark,light}/`
-
-The `contents/defaults` file wires everything together:
-
-```
-[kwinrc][org.kde.kdecoration2]
-library=org.kde.kwin.aurorae
-theme=__aurorae__svg__windows-modern-{dark,light}-aurorae
-
-[plasmarc][Theme]
-name=Windows-modern-{dark,light}
-
-[kdeglobals][Icons]
-Theme=windows-modern
-
-[kdeglobals][General]
-ColorScheme=WindowsModern{Dark,Light}
-```
-
-Each package also contains
-`contents/layouts/org.kde.plasma.desktop-layout.js`, the Plasma 6
-desktop layout script for the default `org.kde.plasma.desktop` shell.
-When the global theme is applied and the user opts in to the theme's
-desktop layout, this script first removes any existing panels and then
-creates the Windows Modern Panel (see the Panel layout template section
-above) with the Win11-style centered taskbar, start menu, system tray,
-clock, and show-desktop sliver.
-
-### Session Lock Screen (Meta+L)
-
-Location: `plasma/shells/org.kde.windowsmodern.lockscreen/`
-
-A Windows 11-style session lock screen. kscreenlocker resolves the lock
-screen from the **current desktop shell package**
-(`org.kde.plasma.desktop`), so this is installed as a complete user-level
-overlay of that shell: `install-sessionlock.sh` symlinks every system
-`contents/` directory back to the system shell **except** `lockscreen`,
-which is replaced with our custom Windows Modern QML. The shell package
-is always kept complete — an incomplete shell triggers the ugly Qt widget
-fallback. On uninstall, the entire user shell directory is removed.
-
-Files under `contents/lockscreen/`:
-
-| File | Purpose |
-|---|---|
-| `LockScreen.qml` | Root item (kscreenlocker entry point). |
-| `LockScreenUi.qml` | Background, clock, status icons, unlock UI, footer. |
-| `MainBlock.qml` | Password entry block (avatar, username, MDL2 field). |
-| `NoPasswordUnlock.qml` | Direct unlock when no password is set. |
-| `MediaControls.qml` | Idle media playback controls (MPRIS). |
-| `config.qml` / `config.xml` | Config UI + schema (clock, media controls). |
-| `qmldir` | QML module definition. |
-
-Design (Win11 dark palette):
-
-- **Background**: KDE-configured wallpaper via `WallpaperFader` (same as
-  Breeze), with a `#000000` @ 0.45 overlay when the unlock UI is visible.
-- **Clock**: Centered, upper-middle. Segoe UI DemiBold 96px time, 24px
-  date (`#E0E0E0`). Visible only when idle; fades out when unlocking.
-- **Status icons**: Bottom-right, icon-only (network, volume, battery).
-  Idle only.
-- **Power menu**: `#2C2C2C` fill, `#3F3F3F` border, `#33FFFFFF` item hover.
-- **Password field**: 1px border, `#A0A0A0` idle / `#4CC2FF` focus (dark
-  accent `SystemAccentColorLight2`).
-- **Login button**: `go-next`, `#A0A0A0` idle / `#4CC2FF` hover.
-- **Animations**: `Kirigami.Units.veryLongDuration * 2` (~800ms),
-  `InOutQuad` easing.
-
-### Boot Greeter / Login Screen (Plasma Login Manager)
-
-Location: `plasma/look-and-feel/org.kde.windowsmodern.dark/contents/lockscreen/`
-(theme QML) and `third_party/plasma-login-manager/` (patched upstream
-submodule, KDE invent `Plasma/6.6` branch).
-
-The boot greeter (display-manager login screen) is a **patched build of
-`plasma-login-manager`**. The patch
-(`patches/main-cpp.patch`) makes the greeter's `main.cpp` load our
-`Main.qml` from the dark look-and-feel's `contents/lockscreen/` instead of
-the bundled qrc resource, trying the system path first then the user path.
-
-| File | Purpose |
-|---|---|
-| `Main.qml` | Root greeter: blurred wallpaper + dark overlay, clock, login stack, user switcher, footer. |
-| `Login.qml` | Login block: avatar, username, password field, GreeterState sync. |
-| `SessionButton.qml` | Desktop session selector (Wayland/X11). |
-| `KeyboardButton.qml` | Keyboard layout switcher. |
-| `faces/.face.icon` | Default avatar. |
-| `patches/main-cpp.patch` | Patches `main.cpp` to load our `Main.qml`. |
-
-The greeter QML reuses the same Win11 dark palette as the session lock
-screen (clock, power menu, password field colors). The wallpaper defaults
-to the Windows Modern dark wallpaper installed system-wide
-(`/usr/share/wallpapers/Windows-modern/contents/images_dark/2560x1440.png`);
-`install-greeter-live.sh` ensures it exists.
-
-Because this replaces the system login manager, it is **opt-in and not
-included in `install.sh all`**:
-
-- `./install.sh greeter` (or `scripts/install-greeter.sh`) — builds the
-  patched greeter and installs the theme to the user dir for `--test` mode.
-- `sudo bash scripts/install-greeter-live.sh` — installs the patched
-  binary system-wide (backs up `/usr/libexec/plasma-login-greeter` to
-  `.orig`, requires typed `YES`).
-- `./scripts/update-plm.sh [branch]` — updates the PLM submodule, reapplies
-  patches, rebuilds.
-
-Revert: `sudo bash scripts/uninstall-greeter-system.sh` (restores from
-`.orig` or reinstalls the distro package).
-
-### Icons
-
-Location: `icons/windows-modern/` (gitignored — ~145MB)
-
-Curated Windows-11-style icon theme assembled from multiple upstream
- packs (Eleven, Fluent, Cobalt, Windows-Eleven, Win11, We10X, Fluentwin,
- Windows-Beuty), restructured to a clean freedesktop layout:
- `<size>/<context>/` fixed tiers
-(8, 16, 22, 24, 32, 48, 64 + @2x where genuine HiDPI art exists),
-`scalable/<context>/` (16-256px), and `symbolic/<context>/`
-(8-512px monochrome). The original dual-layout duplication
-(parallel `<context>/<size>/` trees with conflicting artwork) was
-removed along with 23,340 byte-identical @2x copies, cutting the
-theme from 583MB / 98k SVGs to 145MB / 25k SVGs (7,313 unique
-names). Orphaned `status/weatheralt/` weather icons were migrated
-to `scalable/status/`. `index.theme` rewritten with 88 directory
-entries and correct `Context=Categories` (was `Applications`)
-labeling. Inherits `breeze-dark,hicolor`. The `icon-theme.cache`
-is rebuilt at install time via `gtk-update-icon-cache`.
-
-#### Start-here icon
-
-A custom Windows-logo start menu icon is shipped as
-`scalable/apps/start-here.svg` and `48/apps/start-here.svg`:
-
-- The **scalable** version is used at most panel heights.
-- The **48px fixed** version draws the logo at exactly 30px (matching
-  `icontasks` app icons on a 48px panel) instead of scaling the
-  full-canvas logo up to the panel height.
-- `start-here-kde.svg` and `start-here-kde-plasma.svg` are symlinks to
-  `start-here.svg` in both `scalable/apps/` and `48/apps/` so any
-  Plasma fallback icon name uses the same glyph.
-
----
+Curated Windows-11-style icon theme assembled from multiple upstream packs and
+restructured into a clean freedesktop context layout. The current repository
+contains 4,958 SVG assets under the ten context directories listed in
+`index.theme`. All ten directories are declared as scalable SVG contexts, so
+the index does not advertise synthetic `@2x` directories that do not exist on
+disk. The icon cache is rebuilt at install time when the cache utility is
+available.
 
 ## Install / Uninstall
 
@@ -725,9 +401,8 @@ Install individual components:
 ./install.sh lookfeel    # Global themes
 ./install.sh layout      # Panel layout template
 ./install.sh showdesk    # Show Desktop applet
-./install.sh startmenu   # Start Menu applet
 ./install.sh systray     # System Tray applet (C++ — see below)
-./install.sh applets     # All three applets
+./install.sh applets     # All four applets
 ```
 
 Copies all themes to `~/.local/share/` (user) or `/usr/share/` (root),
@@ -778,7 +453,6 @@ windows_modern2/
 ├── plasma/
 │   ├── applets/
 │   │   ├── org.kde.windowsmodern.showdesktop/     # Win11 thin-show-desktop sliver
-│   │   ├── org.kde.windowsmodern.startmenu/       # Win11 Start Menu
 │   │   └── org.kde.windowsmodern.systemtray/      # Win11 system tray
 │   ├── desktoptheme/
 │   │   ├── Windows-modern-dark/         # Dark plasma theme (165 SVGs)
@@ -786,12 +460,9 @@ windows_modern2/
 │   ├── layout-templates/
 │   │   └── org.kde.windowsmodern.panel/ # Win11 centered taskbar layout
 │   ├── look-and-feel/
-│   │   ├── org.kde.windowsmodern.dark/  # Dark global theme (+ boot greeter QML)
+│   │   ├── org.kde.windowsmodern.dark/  # Dark global theme
 │   │   └── org.kde.windowsmodern.light/ # Light global theme
 │   └── shells/
-│       └── org.kde.windowsmodern.lockscreen/ # Session lock (Meta+L) QML
-├── third_party/
-│   └── plasma-login-manager/             # Patched PLM submodule (boot greeter)
 ├── wallpaper/
 ├── docs/
 │   └── STYLE.md                         # This file
@@ -815,10 +486,6 @@ windows_modern2/
   **Eleven** icon pack.
 - **[vinceliuice](https://github.com/vinceliuice/Fluent-icon-theme)** —
   **Fluent** icon pack.
-- **[Eisteed](https://github.com/Eisteed/menu-11-next)** —
-  **Menu11 - Next** start menu plasmoid, used as a reference for the
-  Windows Modern Start Menu (forked from
-  [adhec/OnzeMenuKDE](https://github.com/adhec/OnzeMenuKDE)).
 - **[Zren / Chris Holland](https://github.com/Zren)** — upstream Show
   Desktop applet (`win7showdesktop`).
 - Window decoration, popup SVGs, icon curation, applets, and integration

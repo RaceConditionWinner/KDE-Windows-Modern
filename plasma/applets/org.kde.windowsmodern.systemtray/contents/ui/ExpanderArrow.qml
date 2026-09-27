@@ -24,16 +24,7 @@ PlasmaCore.ToolTipArea {
     Accessible.name: subText
     Accessible.description: i18n("Show all the items in the system tray in a popup")
     Accessible.role: Accessible.Button
-    // Keyboard/accessibility activation has no separate press/click phases
-    // to snapshot across, so this reads live state (see the TapHandler
-    // below for the mouse path, which does need to snapshot).
-    Accessible.onPressAction: {
-        if (systemTrayState.hiddenItemsShowing) {
-            systemTrayState.expanded = false;
-        } else {
-            systemTrayState.showHiddenItems();
-        }
-    }
+    Accessible.onPressAction: systemTrayState.expanded = !systemTrayState.expanded
 
     Keys.onPressed: event => {
         switch (event.key) {
@@ -41,37 +32,22 @@ PlasmaCore.ToolTipArea {
         case Qt.Key_Enter:
         case Qt.Key_Return:
         case Qt.Key_Select:
-            if (systemTrayState.hiddenItemsShowing) {
-                systemTrayState.expanded = false;
-            } else {
-                systemTrayState.showHiddenItems();
-            }
+            systemTrayState.expanded = !systemTrayState.expanded;
         }
     }
 
-    // ExpanderArrow has exactly one job: show the hidden-icons popup. It no
-    // longer shows the Action Panel underneath — that's reached only via
-    // the system cluster now (PlasmoidItem.qml).
-    subText: systemTrayState.hiddenItemsShowing ? i18n("Close popup") : i18n("Show hidden icons")
+    subText: systemTrayState.expanded ? i18n("Close popup") : i18n("Show hidden icons")
 
-    property bool wasHiddenItemsShowing
+    property bool wasExpanded
 
     TapHandler {
         onPressedChanged: {
             if (pressed) {
-                // Read at press time, not tap time: hideOnWindowDeactivate
-                // can auto-close the popup as soon as this press steals
-                // focus from it, before onTapped fires (see
-                // systemTrayState.hiddenItemsShowing).
-                tooltip.wasHiddenItemsShowing = systemTrayState.hiddenItemsShowing;
+                tooltip.wasExpanded = systemTrayState.expanded;
             }
         }
         onTapped: (eventPoint, button) => {
-            if (tooltip.wasHiddenItemsShowing) {
-                systemTrayState.expanded = false;
-            } else {
-                systemTrayState.showHiddenItems();
-            }
+            systemTrayState.expanded = !tooltip.wasExpanded;
             expandedRepresentation.hiddenLayout.currentIndex = -1;
         }
     }
@@ -79,13 +55,13 @@ PlasmaCore.ToolTipArea {
     Kirigami.Icon {
         anchors.fill: parent
 
-        rotation: systemTrayState.hiddenItemsShowing ? 180 : 0
+        rotation: systemTrayState.expanded ? 180 : 0
         Behavior on rotation {
             RotationAnimation {
                 duration: tooltip.arrowAnimationDuration
             }
         }
-        opacity: systemTrayState.hiddenItemsShowing ? 0 : 1
+        opacity: systemTrayState.expanded ? 0 : 1
         Behavior on opacity {
             NumberAnimation {
                 duration: tooltip.arrowAnimationDuration
@@ -108,13 +84,13 @@ PlasmaCore.ToolTipArea {
     Kirigami.Icon {
         anchors.fill: parent
 
-        rotation: systemTrayState.hiddenItemsShowing ? 0 : -180
+        rotation: systemTrayState.expanded ? 0 : -180
         Behavior on rotation {
             RotationAnimation {
                 duration: tooltip.arrowAnimationDuration
             }
         }
-        opacity: systemTrayState.hiddenItemsShowing ? 1 : 0
+        opacity: systemTrayState.expanded ? 1 : 0
         Behavior on opacity {
             NumberAnimation {
                 duration: tooltip.arrowAnimationDuration

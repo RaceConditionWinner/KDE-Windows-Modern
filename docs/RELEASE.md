@@ -9,7 +9,7 @@ The automated parts are handled by three scripts:
 |--------|---------|
 | `scripts/package.sh` | Builds per-component ZIPs (for KDE Store) and a full bundle (for GitHub) into `dist/`. |
 | `scripts/release.sh` | Runs health checks, tags, pushes, and creates the GitHub release with artifacts attached. |
-| `scripts/capture-screenshots.sh` | Guided capture of README screenshots (dark/light, start menu, system tray, windows). |
+| `scripts/capture-screenshots.sh` | Guided capture of README screenshots (dark/light, system tray, windows, icon-task thumbnails). |
 
 Everything below marked **[manual]** must be done by a human.
 
@@ -20,7 +20,7 @@ Everything below marked **[manual]** must be done by a human.
 Before tagging, confirm:
 
 - `./verify-all.sh` passes.
-- All `metadata.json` / `metadata.desktop` share the same `Version`.
+- All Plasma 6 applets, desktop themes, global themes, and layout templates use `metadata.json`; the remaining `metadata.desktop` manifests are limited to Aurorae window-decoration packages.
 - `Website` / `BugReportUrl` point at `https://github.com/Jeysef/KDE-Windows-Modern`.
 - Screenshots are up to date (run `./scripts/capture-screenshots.sh` if not).
 - Working tree is clean on `main`.
@@ -88,12 +88,10 @@ wired up later (see step 3c).
 | 6 | Windows Modern — Plasma Theme Light | Plasma 6 Themes | `WindowsModern-desktoptheme-light-*.zip` |
 | 7 | Windows Modern — Wallpaper | Wallpapers | `WindowsModern-wallpaper-*.zip` |
 | 8 | Windows Modern — Show Desktop applet | Plasma 6 Applets | `WindowsModern-applet-showdesktop-*.zip` |
-| 9 | Windows Modern — Start Menu applet | Plasma 6 Applets | `WindowsModern-applet-startmenu-*.zip` |
-| 10 | Windows Modern — Icon Tasks applet | Plasma 6 Applets | `WindowsModern-applet-icontasks-*.zip` |
-| 11 | Windows Modern — Digital Clock applet | Plasma 6 Applets | `WindowsModern-applet-digitalclock-*.zip` |
-| 12 | Windows Modern — Panel Layout | Plasma 6 Layout Templates | `WindowsModern-layout-panel-*.zip` |
-| 12 | Windows Modern — Global Theme Dark | Global Themes (Plasma 6) | `WindowsModern-lookfeel-dark-*.zip` |
-| 13 | Windows Modern — Global Theme Light | Global Themes (Plasma 6) | `WindowsModern-lookfeel-light-*.zip` |
+| 9 | Windows Modern — Digital Clock applet | Plasma 6 Applets | `WindowsModern-applet-digitalclock-*.zip` |
+| 10 | Windows Modern — Panel Layout | Plasma 6 Layout Templates | `WindowsModern-layout-panel-*.zip` |
+| 11 | Windows Modern — Global Theme Dark | Global Themes (Plasma 6) | `WindowsModern-lookfeel-dark-*.zip` |
+| 12 | Windows Modern — Global Theme Light | Global Themes (Plasma 6) | `WindowsModern-lookfeel-light-*.zip` |
 
 **[manual]** For each product:
 1. Go to <https://store.kde.org/browse> and click **Add Content** (or edit an
@@ -109,7 +107,7 @@ wired up later (see step 3c).
 
 ### 3c. Wire up Global Theme dependencies **[manual]**
 
-The Global Themes (items 13–14) can auto-install their color scheme, Plasma
+The Global Themes (items 11–12) can auto-install their color scheme, Plasma
 theme, Aurorae, and icon dependencies via `X-KPackage-Dependencies`.
 These dependency lines were **emptied** for the initial release because the
 new KDE Store product IDs were not yet known.
@@ -119,9 +117,7 @@ dependency entries in:
 
 ```
 plasma/look-and-feel/org.kde.windowsmodern.dark/metadata.json
-plasma/look-and-feel/org.kde.windowsmodern.dark/metadata.desktop
 plasma/look-and-feel/org.kde.windowsmodern.light/metadata.json
-plasma/look-and-feel/org.kde.windowsmodern.light/metadata.desktop
 ```
 
 Format (one per dependency, example):
@@ -136,12 +132,7 @@ Format (one per dependency, example):
 ]
 ```
 
-**metadata.desktop:**
-```ini
-X-KPackage-Dependencies=kns://colorschemes.knsrc/api.kde-look.org/<NEW_ID>,kns://plasma-themes.knsrc/api.kde-look.org/<NEW_ID>,...
-```
-
-Then re-package and re-upload the Global Themes (items 13–14) with the updated
+Then re-package and re-upload the Global Themes (items 11–12) with the updated
 dependencies, and bump the version (e.g. `1.0.1`).
 
 ### 3d. Components NOT published to the KDE Store
@@ -150,6 +141,7 @@ dependencies, and bump the version (e.g. `1.0.1`).
 |-----------|--------|--------------|
 | **Kvantum** (`Kvantum/`) | 3rd-party engine, no KDE Store category. | GitHub release bundle only. |
 | **C++ System Tray** (`plasma/applets/org.kde.windowsmodern.systemtray`) | Compiled `.so` plugin, not an installable KPackage. | GitHub release bundle only. See `BUILD.md`. |
+| **C++ Icon Tasks** (`plasma/applets/org.kde.windowsmodern.icontasks`) | Compiled `.so` plugin; the ZIP source tree is not an installable KPackage. | GitHub release bundle only. Build/install with `./install.sh icontasks`. |
 
 Optional future: package the System Tray as distro packages (COPR for Fedora,
 AUR for Arch).
@@ -160,7 +152,7 @@ AUR for Arch).
 
 For a subsequent release (e.g. `1.1.0`):
 
-1. Bump `Version` in **every** `metadata.json` / `metadata.desktop` (see
+1. Bump `Version` in every current `metadata.json` (see
    `./scripts/package.sh --list` for the full set).
 2. Commit on `main`.
 3. `./scripts/release.sh 1.1.0`

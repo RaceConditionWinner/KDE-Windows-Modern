@@ -1,196 +1,210 @@
 #!/bin/bash
-# ───────────────────────────────────────────────────────────────────
-#  uninstall.sh — remove all Windows Modern components
-#
-#  Usage:  ./uninstall.sh              Remove everything
-#          ./uninstall.sh <component>   Remove one component
-# ───────────────────────────────────────────────────────────────────
+# Windows Modern component uninstaller.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/scripts/install-lib.sh"
 
-# Remove one or more paths. User-local paths are deleted directly; system
-# paths (/usr/*) require pkexec or sudo because regular users cannot write
-# them. Globs must be unquoted on the caller side so the shell expands them.
-rm_path() {
+FAILURES=0
+SHELL_REFRESH=0
+
+remove_user() {
+    local path="$1"
+    if [ -e "$path" ] || [ -L "$path" ]; then
+        if ! remove_path "$path"; then
+            err "Could not remove: $path"
+            FAILURES=$((FAILURES + 1))
+        fi
+    fi
+}
+
+remove_system() {
     local path
     for path in "$@"; do
-        [ -e "$path" ] || continue
-        if [[ "$path" == "$HOME"/* ]]; then
-            rm -rf "$path" 2>/dev/null || true
-        else
-            if command -v pkexec &>/dev/null; then
-                pkexec rm -rf "$path" 2>/dev/null || warn "Could not remove system path (pkexec failed): $path"
-            elif command -v sudo &>/dev/null; then
-                sudo rm -rf "$path" 2>/dev/null || warn "Could not remove system path (sudo failed): $path"
-            else
-                rm -rf "$path" 2>/dev/null || warn "Could not remove path: $path"
+        if [ -e "$path" ] || [ -L "$path" ]; then
+            if ! remove_paths_privileged "$path"; then
+                err "Could not remove: $path"
+                FAILURES=$((FAILURES + 1))
             fi
         fi
     done
 }
 
-detect_systray_so_dir() {
-    local plugin_dir=""
-    if command -v pkg-config &>/dev/null; then
-        plugin_dir=$(pkg-config --variable=plugindir Qt6Core 2>/dev/null || true)
+remove_both() {
+    if [ "$UID" -eq 0 ]; then
+        remove_system "$2"
+    else
+        remove_user "$1"
+        remove_system "$2"
     fi
-    if [ -z "$plugin_dir" ]; then
-        if [ -d /usr/lib64/qt6/plugins ]; then
-            plugin_dir=/usr/lib64/qt6/plugins
-        elif [ -d /usr/lib/qt6/plugins ]; then
-            plugin_dir=/usr/lib/qt6/plugins
-        else
-            plugin_dir=/usr/lib64/qt6/plugins
-        fi
-    fi
-    echo "$plugin_dir/plasma/applets"
 }
 
-reset_kwin_borders() {
-    if command -v kwriteconfig6 &>/dev/null; then
-        kwriteconfig6 --file kwinrc --group "org.kde.kdecoration2" --key "BorderSize" "Normal"
-        kwriteconfig6 --file kwinrc --group "org.kde.kdecoration2" --key "BorderSizeAuto" "true"
-        dbus-send --session --dest=org.kde.KWin /KWin org.kde.KWin.reconfigure 2>/dev/null || true
+warn_if_applet_is_configured() {
+    local app_id="$1" layout
+    [ "$UID" -ne 0 ] || return 0
+    layout="$(plasma_layout_file)"
+    if [ -f "$layout" ] && grep -Eq "(^|[[:space:]])plugin=${app_id}([[:space:]]|$)" "$layout"; then
+        warn "The running Plasma layout still references ${app_id}. It will become unavailable after uninstall; use './uninstall.sh all' to restore Breeze automatically, or remove the widget first."
     fi
 }
 
 uninstall_component() {
     local name="$1"
     info "Uninstalling: $name"
+
     case "$name" in
         themes)
-            # Aurorae packages are lowercase in the current repo
-            rm_path "$AURORAE_DIR/windows-modern"*-aurorae
-            rm_path "$AURORAE_DIR/Windows-modern"*-aurorae
-            rm_path "$AURORAE_DIR/__aurorae__svg__windows-modern"*
-            rm_path "$AURORAE_DIR/__aurorae__svg__Windows-modern"*
-            rm_path "$SCHEMES_DIR/WindowsModern"*.colors
-            rm_path "$KVANTUM_DIR/Windows-modern"*
-            rm_path "$KVANTUM_DIR/windows-modern"*
-            rm_path "$PLASMA_DIR/Windows-modern"*
-            rm_path "$PLASMA_DIR/windows-modern"*
-            rm_path "$WALLPAPER_DIR/Windows-modern"*
-            rm_path "$WALLPAPER_DIR/windows-modern"*
-            reset_kwin_borders
+            if ! restore_kwin_borders_if_needed; then
+                FAILURES=$((FAILURES + 1))
+                return 1
+            fi
+            if ! restore_default_theme_if_active; then
+                FAILURES=$((FAILURES + 1))
+                return 1
+            fi
+            remove_both "$AURORAE_DIR/windows-modern-dark-aurorae" "/usr/share/aurorae/themes/windows-modern-dark-aurorae"
+            remove_both "$AURORAE_DIR/windows-modern-light-aurorae" "/usr/share/aurorae/themes/windows-modern-light-aurorae"
+            remove_both "$SCHEMES_DIR/WindowsModernDark.colors" "/usr/share/color-schemes/WindowsModernDark.colors"
+            remove_both "$SCHEMES_DIR/WindowsModernLight.colors" "/usr/share/color-schemes/WindowsModernLight.colors"
+            remove_both "$KVANTUM_DIR/Windows-modern" "/usr/share/Kvantum/Windows-modern"
+            remove_both "$PLASMA_DIR/Windows-modern-dark" "/usr/share/plasma/desktoptheme/Windows-modern-dark"
+            remove_both "$PLASMA_DIR/Windows-modern-light" "/usr/share/plasma/desktoptheme/Windows-modern-light"
+            remove_both "$WALLPAPER_DIR/Windows-modern" "/usr/share/wallpapers/Windows-modern"
+            if [ "$UID" -ne 0 ] && [ -f "$XDG_CONFIG_HOME/Kvantum/kvantum.kvconfig" ]; then
+                # Only change the user's Kvantum selection if it still points at us.
+                sed -i '/^[[:space:]]*theme=Windows-modern[[:space:]]*$/d' "$XDG_CONFIG_HOME/Kvantum/kvantum.kvconfig" || true
+            fi
+            SHELL_REFRESH=1
+            refresh_sycoca
             info "Themes uninstalled."
             ;;
         icons)
-            rm_path "$ICONS_DIR/windows-modern"
+            if [ "$UID" -ne 0 ]; then
+                remove_user "$ICONS_DIR/windows-modern"
+            else
+                remove_system "/usr/share/icons/windows-modern"
+            fi
+            SHELL_REFRESH=1
+            refresh_sycoca
             info "Icons uninstalled."
             ;;
         lookfeel)
-            rm_path "$LOOKFEEL_DIR/org.kde.windowsmodern.dark"
-            rm_path "$LOOKFEEL_DIR/org.kde.windowsmodern.light"
+            if ! restore_default_theme_if_active; then
+                FAILURES=$((FAILURES + 1))
+                return 1
+            fi
+            remove_both "$LOOKFEEL_DIR/org.kde.windowsmodern.dark" "/usr/share/plasma/look-and-feel/org.kde.windowsmodern.dark"
+            remove_both "$LOOKFEEL_DIR/org.kde.windowsmodern.light" "/usr/share/plasma/look-and-feel/org.kde.windowsmodern.light"
+            SHELL_REFRESH=1
+            refresh_sycoca
             info "Global themes uninstalled."
             ;;
         layout)
-            rm_path "$LAYOUT_DIR/org.kde.windowsmodern.panel"
-            info "Panel layout uninstalled."
+            remove_both "$LAYOUT_DIR/org.kde.windowsmodern.panel" "/usr/share/plasma/layout-templates/org.kde.windowsmodern.panel"
+            refresh_sycoca
+            info "Panel layout template uninstalled."
             ;;
         showdesk)
-            rm_path "$APPLETS_DIR/org.kde.windowsmodern.showdesktop"
-            info "Show Desktop uninstalled."
+            warn_if_applet_is_configured org.kde.windowsmodern.showdesktop
+            remove_both "$APPLETS_DIR/org.kde.windowsmodern.showdesktop" "/usr/share/plasma/plasmoids/org.kde.windowsmodern.showdesktop"
+            SHELL_REFRESH=1
             ;;
-        startmenu)
-            rm_path "$APPLETS_DIR/org.kde.windowsmodern.startmenu"
-            info "Start Menu uninstalled."
-            ;;
-        systray|systemtray)
-            rm_path "$(detect_systray_so_dir)/org.kde.windowsmodern.systemtray.so"
-            rm_path "/usr/share/plasma/plasmoids/org.kde.windowsmodern.systemtray"
-            rm_path "$HOME/.local/share/plasma/plasmoids/org.kde.windowsmodern.systemtray"
-            # Stale local .so copies take precedence over the system plugin and
-            # can make uninstall+reinstall appear to do nothing.
-            rm_path "$HOME/.local/lib64/qt6/plugins/plasma/applets/org.kde.windowsmodern.systemtray.so"
-            rm_path "$HOME/.local/lib/qt6/plugins/plasma/applets/org.kde.windowsmodern.systemtray.so"
-            # Legacy quicksettings plasmoid that was absorbed into the system tray
-            rm_path "/usr/share/plasma/plasmoids/org.kde.windowsmodern.quicksettings"
-            rm_path "$HOME/.local/share/plasma/plasmoids/org.kde.windowsmodern.quicksettings"
-            info "System Tray uninstalled. Restart plasmashell to complete."
+        systray)
+            warn_if_applet_is_configured org.kde.windowsmodern.systemtray
+            local plugin_dir=""
+            plugin_dir="$(plasma_applet_plugin_dir 2>/dev/null || true)"
+            [ -n "$plugin_dir" ] && remove_system "$plugin_dir/org.kde.windowsmodern.systemtray.so"
+            remove_both "$XDG_DATA_HOME/plasma/plasmoids/org.kde.windowsmodern.systemtray" "/usr/share/plasma/plasmoids/org.kde.windowsmodern.systemtray"
+            remove_user "$HOME/.local/lib64/qt6/plugins/plasma/applets/org.kde.windowsmodern.systemtray.so"
+            remove_user "$HOME/.local/lib/qt6/plugins/plasma/applets/org.kde.windowsmodern.systemtray.so"
+            SHELL_REFRESH=1
+            refresh_sycoca
+            info "System Tray uninstalled."
             ;;
         icontasks)
-            rm_path "$(detect_systray_so_dir)/org.kde.plasma.icontasks.so"
-            rm_path "/usr/share/plasma/plasmoids/org.kde.plasma.icontasks"
-            rm_path "$HOME/.local/share/plasma/plasmoids/org.kde.plasma.icontasks"
-            rm_path "$HOME/.local/lib64/qt6/plugins/plasma/applets/org.kde.plasma.icontasks.so"
-            rm_path "$HOME/.local/lib/qt6/plugins/plasma/applets/org.kde.plasma.icontasks.so"
-            info "Icon Tasks uninstalled. Restart plasmashell to complete."
+            warn_if_applet_is_configured org.kde.windowsmodern.icontasks
+            local plugin_dir=""
+            plugin_dir="$(plasma_applet_plugin_dir 2>/dev/null || true)"
+            [ -n "$plugin_dir" ] && remove_system "$plugin_dir/org.kde.windowsmodern.icontasks.so"
+            remove_both "$XDG_DATA_HOME/plasma/plasmoids/org.kde.windowsmodern.icontasks" "/usr/share/plasma/plasmoids/org.kde.windowsmodern.icontasks"
+            remove_user "$HOME/.local/lib64/qt6/plugins/plasma/applets/org.kde.windowsmodern.icontasks.so"
+            remove_user "$HOME/.local/lib/qt6/plugins/plasma/applets/org.kde.windowsmodern.icontasks.so"
+            SHELL_REFRESH=1
+            refresh_sycoca
+            info "Icon Tasks uninstalled."
             ;;
         digitalclock)
-            rm_path "/usr/share/plasma/plasmoids/org.kde.windowsmodern.digitalclock"
-            rm_path "$HOME/.local/share/plasma/plasmoids/org.kde.windowsmodern.digitalclock"
-            info "Digital Clock uninstalled. Restart plasmashell to complete."
-            ;;
-        sessionlock)
-            # kscreenlocker uses the current desktop shell's lockscreen. We
-            # themed Meta+L by creating a complete user-level overlay of
-            # org.kde.plasma.desktop. Remove the ENTIRE overlay — never leave
-            # an incomplete shell behind (it triggers the Qt widget fallback).
-            rm_path "$HOME/.local/share/plasma/shells/org.kde.plasma.desktop"
-            rm_path "$HOME/.local/share/plasma/shells/org.kde.windowsmodern.lockscreen"
-            if command -v kwriteconfig6 &>/dev/null; then
-                kwriteconfig6 --file kscreenlockerrc --group Greeter --key Theme --delete 2>/dev/null || true
-            fi
-            command -v kbuildsycoca6 &>/dev/null && kbuildsycoca6 2>/dev/null || true
-            rm -rf ~/.cache/qmlcache ~/.cache/QtProject/qmlcache 2>/dev/null || true
-            info "Session lock screen uninstalled. Breeze restored for Meta+L."
-            ;;
-        greeter)
-            # Revert any applied PLM patches and remove the user-level theme.
-            PLM_DIR="$SRC_DIR/third_party/plasma-login-manager"
-            PATCH_DIR="$SRC_DIR/plasma/look-and-feel/org.kde.windowsmodern.dark/patches"
-            if [ -d "${PLM_DIR}" ]; then
-                for p in main-cpp.patch; do
-                    if [ -f "${PATCH_DIR}/${p}" ]; then
-                        patch -d "${PLM_DIR}" -p1 -R --dry-run -s -f < "${PATCH_DIR}/${p}" 2>/dev/null \
-                            && patch -d "${PLM_DIR}" -p1 -R < "${PATCH_DIR}/${p}" 2>/dev/null || true
-                    fi
-                done
-            fi
-            rm_path "$HOME/.local/share/plasma/look-and-feel/org.kde.windowsmodern.dark/contents/lockscreen"
-            info "Boot greeter (user) uninstalled. Patches reverted, theme removed."
-            warn "To restore the SYSTEM greeter binary, run:  sudo bash scripts/uninstall-greeter-system.sh"
-            ;;
-        greetersystem)
-            bash "$SRC_DIR/scripts/uninstall-greeter-system.sh"
+            warn_if_applet_is_configured org.kde.windowsmodern.digitalclock
+            remove_both "$APPLETS_DIR/org.kde.windowsmodern.digitalclock" "/usr/share/plasma/plasmoids/org.kde.windowsmodern.digitalclock"
+            SHELL_REFRESH=1
+            refresh_sycoca
+            info "Digital Clock uninstalled."
             ;;
         all)
-            for c in themes icons lookfeel layout showdesk startmenu systray icontasks digitalclock sessionlock greeter; do
-                uninstall_component "$c"
+            # Restore settings while the Windows Modern state is still detectable,
+            # then remove its packages so the running session never resolves missing assets.
+            if ! restore_kwin_borders_if_needed; then
+                FAILURES=$((FAILURES + 1))
+                return 1
+            fi
+            if ! restore_default_theme_if_active; then
+                FAILURES=$((FAILURES + 1))
+                return 1
+            fi
+            for component in "${WM_COMPONENTS[@]}"; do
+                uninstall_component "$component"
             done
-            reset_kwin_borders
+            # All custom applets are now gone. Reset to Breeze's stock panel layout
+            # only when the current configuration still references Windows Modern.
+            if [ "$UID" -ne 0 ] && windows_modern_layout_present; then
+                if command -v plasma-apply-lookandfeel &>/dev/null; then
+                    info "Removing Windows Modern panel references via Breeze layout..."
+                    plasma-apply-lookandfeel -a org.kde.breeze.desktop --resetLayout >/dev/null 2>&1 || \
+                        warn "Could not reset the panel layout automatically; remove stale Windows Modern widgets manually."
+                else
+                    warn "plasma-apply-lookandfeel not found; stale panel references may remain until manually removed."
+                fi
+            fi
+            SHELL_REFRESH=1
             ;;
         *)
             err "Unknown component: $name"
-            echo "Available: themes, icons, lookfeel, layout, showdesk, startmenu, systray, icontasks, digitalclock, sessionlock, greeter, greetersystem, all"
-            exit 1
+            echo "Available: ${WM_COMPONENTS[*]} all"
+            return 2
             ;;
     esac
 }
 
+component="all"
 case "${1:-}" in
-    --help|-h|"")
+    "") component=all ;;
+    --help|-h)
         echo "Usage: ./uninstall.sh [component]"
-        echo "  (no args)  Show help"
-        echo "  all        Uninstall everything"
-        echo "  themes     Themes (Aurorae, colors, Kvantum, Plasma, wallpapers)"
-        echo "  icons      Icon pack"
-        echo "  lookfeel   Global themes"
-        echo "  layout     Panel layout template"
-        echo "  showdesk   Show Desktop applet"
-        echo "  startmenu  Start Menu applet"
-    echo "  systray    System Tray"
-    echo "  icontasks  Icon Tasks taskbar"
-    echo "  digitalclock Digital Clock"
-    echo "  sessionlock Session lock screen (Meta+L)"
-    echo "  greeter    Boot greeter (user theme + revert patches)"
-    echo "  greetersystem Restore system greeter binary (needs sudo)"
-    echo "  all        Uninstall everything"
-    exit 0
-    ;;
+        echo "No argument is equivalent to: ./uninstall.sh all"
+        echo "Components: ${WM_COMPONENTS[*]} all"
+        exit 0
+        ;;
+    all|themes|icons|lookfeel|layout|showdesk|systray|icontasks|digitalclock|systemtray)
+        component="$1"
+        [ "$component" != systemtray ] || component=systray
+        ;;
     *)
-        uninstall_component "$1"
+        err "Unknown component: $1"
+        echo "Available: ${WM_COMPONENTS[*]} all"
+        exit 2
         ;;
 esac
+
+uninstall_component "$component"
+
+# Removing the complete theme must also eliminate stale compiled/config state
+# from the running shell. One restart is enough, regardless of component count.
+if [ "$SHELL_REFRESH" -eq 1 ] && [ "$UID" -ne 0 ]; then
+    restart_plasmashell || FAILURES=$((FAILURES + 1))
+fi
+
+if [ "$FAILURES" -ne 0 ]; then
+    err "Uninstall completed with $FAILURES failure(s)."
+    exit 1
+fi
+info "Uninstall completed successfully."

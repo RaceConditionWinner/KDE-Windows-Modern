@@ -40,12 +40,10 @@ COMPONENTS=(
     "icons|$SRC_DIR/icons/windows-modern|index.theme|Icons"
     "aurorae-dark|$SRC_DIR/aurorae/windows-modern-dark-aurorae|metadata.desktop|Aurorae Themes"
     "aurorae-light|$SRC_DIR/aurorae/windows-modern-light-aurorae|metadata.desktop|Aurorae Themes"
-    "desktoptheme-dark|$SRC_DIR/plasma/desktoptheme/Windows-modern-dark|metadata.desktop|Plasma 6 Themes"
-    "desktoptheme-light|$SRC_DIR/plasma/desktoptheme/Windows-modern-light|metadata.desktop|Plasma 6 Themes"
+    "desktoptheme-dark|$SRC_DIR/plasma/desktoptheme/Windows-modern-dark|metadata.json|Plasma 6 Themes"
+    "desktoptheme-light|$SRC_DIR/plasma/desktoptheme/Windows-modern-light|metadata.json|Plasma 6 Themes"
     "wallpaper|$SRC_DIR/wallpaper/Windows-modern|metadata.json|Wallpapers"
     "applet-showdesktop|$SRC_DIR/plasma/applets/org.kde.windowsmodern.showdesktop|metadata.json|Plasma 6 Applets"
-    "applet-startmenu|$SRC_DIR/plasma/applets/org.kde.windowsmodern.startmenu|metadata.json|Plasma 6 Applets"
-    "applet-icontasks|$SRC_DIR/plasma/applets/org.kde.windowsmodern.icontasks|metadata.json|Plasma 6 Applets"
     "applet-digitalclock|$SRC_DIR/plasma/applets/org.kde.windowsmodern.digitalclock|metadata.json|Plasma 6 Applets"
     "layout-panel|$SRC_DIR/plasma/layout-templates/org.kde.windowsmodern.panel|metadata.json|Plasma 6 Layout Templates"
     "lookfeel-dark|$SRC_DIR/plasma/look-and-feel/org.kde.windowsmodern.dark|metadata.json|Global Themes (Plasma 6)"
@@ -94,10 +92,22 @@ build_one() {
 # ── Main ────────────────────────────────────────────────────────────
 mkdir -p "$DIST_DIR"
 
-if [[ "${1:-}" == "--list" ]]; then
-    list_components
-    exit 0
-fi
+case "${1:-}" in
+    --help|-h)
+        echo "Usage: ./scripts/package.sh [component ...]"
+        echo ""
+        echo "  no args        Build all distributable KDE Store components and the full GitHub bundle"
+        echo "  --list         List component package targets"
+        echo "  --help, -h     Show this help"
+        echo ""
+        list_components
+        exit 0
+        ;;
+    --list)
+        list_components
+        exit 0
+        ;;
+esac
 
 if [[ $# -gt 0 ]]; then
     info "Building selected components..."
@@ -128,9 +138,56 @@ FULL_OUT="$DIST_DIR/KDE-Windows-Modern-${FULL_VER}.zip"
 rm -f "$FULL_OUT"
 (cd "$SRC_DIR" && zip -qr "$FULL_OUT" \
     aurorae color-schemes icons Kvantum plasma wallpaper \
-    install.sh uninstall.sh verify-all.sh README.md LICENSE AUTHORS ATTRIBUTION.md \
-    -x '*/build/*' '*/CMakeFiles/*' '*/.git/*')
+    scripts docs \
+    install.sh uninstall.sh verify-all.sh README.md LICENSE AUTHORS ATTRIBUTION.md .gitignore \
+    -x '*/build/*' '*/CMakeFiles/*' '*/.git/*' '*/dist/*')
 step "built KDE-Windows-Modern-${FULL_VER}.zip  (full bundle)"
+
+# Validate the release bundle itself. This prevents a successful ZIP build
+# from regressing into a bundle that cannot run its documented installer.
+python3 - "$FULL_OUT" <<'PY'
+import sys, zipfile
+from pathlib import PurePosixPath
+
+archive = sys.argv[1]
+required = {
+    "scripts/install-lib.sh",
+    "scripts/install-themes.sh",
+    "scripts/install-icons.sh",
+    "scripts/install-lookfeel.sh",
+    "scripts/install-layout.sh",
+    "scripts/install-showdesk.sh",
+    "scripts/install-systray.sh",
+    "scripts/install-icontasks.sh",
+    "scripts/install-digitalclock.sh",
+    "install.sh",
+    "uninstall.sh",
+    "verify-all.sh",
+}
+forbidden_fragments = (
+    "app-decorations/",
+    "org.kde.windowsmodern.startmenu/",
+    "org.kde.windowsmodern.lockscreen/",
+    "plasma-login-manager/",
+    "install-greeter",
+    "uninstall-greeter",
+    "install-sessionlock",
+    "install-startmenu",
+    "update-plm.sh",
+)
+with zipfile.ZipFile(archive) as zf:
+    names = set(zf.namelist())
+    missing = sorted(required - names)
+    forbidden = sorted(n for n in names if any(frag in n for frag in forbidden_fragments))
+    if missing:
+        raise SystemExit("release bundle missing required files: " + ", ".join(missing))
+    if forbidden:
+        raise SystemExit("release bundle contains removed components: " + ", ".join(forbidden))
+    bad = zf.testzip()
+    if bad:
+        raise SystemExit("release bundle has corrupted ZIP entry: " + bad)
+print("Release bundle validation passed.")
+PY
 
 echo ""
 info "Done. Artifacts in ${DIST_DIR}:"

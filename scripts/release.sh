@@ -53,24 +53,28 @@ if [[ "$BRANCH" != "main" ]]; then
     exit 1
 fi
 
-if ! git diff --quiet || ! git diff --cached --quiet; then
+if [ -n "$(git status --porcelain)" ]; then
     err "Working tree is dirty. Commit or stash first."
     git status --short
     exit 1
 fi
 step "working tree clean"
 
-if ! command -v gh &>/dev/null; then
-    err "gh CLI not found. Install: https://cli.github.com"
-    exit 1
-fi
-step "gh CLI present"
+if [[ "$DRY_RUN" -eq 0 ]]; then
+    if ! command -v gh &>/dev/null; then
+        err "gh CLI not found. Install: https://cli.github.com"
+        exit 1
+    fi
+    step "gh CLI present"
 
-if ! gh auth status >/dev/null 2>&1; then
-    err "Not logged into GitHub. Run: gh auth login"
-    exit 1
+    if ! gh auth status >/dev/null 2>&1; then
+        err "Not logged into GitHub. Run: gh auth login"
+        exit 1
+    fi
+    step "gh authenticated"
+else
+    warn "Dry run: GitHub CLI/authentication checks skipped."
 fi
-step "gh authenticated"
 
 info "Running project health check..."
 if ! ./verify-all.sh >/dev/null 2>&1; then

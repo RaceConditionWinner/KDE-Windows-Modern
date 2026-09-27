@@ -76,7 +76,7 @@ systemctl --user restart plasma-plasmashell.service
 ## Local plugin shadowing
 
 If you have an old copy of the plugin at
-`~/.local/lib64/qt6/plugins/plasma/applets/org.kde.windowsmodern.icontasks.so`
+`~/.local/lib*/qt6/plugins/plasma/applets/org.kde.windowsmodern.icontasks.so`
 (or `~/.local/lib/qt6/plugins/...`), Qt will load that local copy instead of
 the system one, and your changes will appear to have no effect. The install
 scripts above remove these stale copies automatically.
@@ -86,7 +86,7 @@ scripts above remove these stale copies automatically.
 After building, the only runtime artifact is:
 
 ```
-/usr/lib64/qt6/plugins/plasma/applets/org.kde.windowsmodern.icontasks.so
+<Qt6 plugin dir>/plasma/applets/org.kde.windowsmodern.icontasks.so
 ```
 
 The QML and config files are compiled into the `.so` via
@@ -116,7 +116,6 @@ contents/ui/Task.qml                    - Task button + tooltip trigger
 contents/ui/ToolTipDelegate.qml         - Tooltip content loader
 contents/ui/ToolTipInstance.qml         - Single-window tooltip (Win11-styled)
 contents/ui/ToolTipWindowMouseArea.qml  - Tooltip hover mouse area
-contents/ui/ToolTipDialog.qml           - Custom PlasmaCore.Dialog (translucency)
 contents/ui/ConfigAppearance.qml        - Appearance settings (+ translucency)
 contents/ui/ConfigBehavior.qml          - Behavior settings
 contents/ui/ContextMenu.qml             - Right-click context menu

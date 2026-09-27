@@ -40,7 +40,7 @@ sudo apt install cmake extra-cmake-modules \
 ## Build
 
 ```bash
-cd system-tray
+cd plasma/applets/org.kde.windowsmodern.systemtray
 
 cmake -B build -DCMAKE_INSTALL_PREFIX=/usr
 cmake --build build --parallel $(nproc)
@@ -48,13 +48,19 @@ cmake --build build --parallel $(nproc)
 
 ## Install
 
-The recommended way is `dev.sh`, which builds, installs the `.so`, removes
-any conflicting KPackage, prunes stale local copies, and restarts
-plasmashell:
+The recommended way is to use the repository-wide installer, which builds,
+installs the `.so`, removes any conflicting KPackage, prunes stale local
+copies, and restarts plasmashell:
 
 ```bash
-cd system-tray
+cd plasma/applets/org.kde.windowsmodern.systemtray
 ./dev.sh
+```
+
+Or from the repo root:
+
+```bash
+./install.sh systray
 ```
 
 If you prefer a manual install:
@@ -67,7 +73,7 @@ systemctl --user restart plasma-plasmashell.service
 ## Local plugin shadowing
 
 If you have an old copy of the plugin at
-`~/.local/lib64/qt6/plugins/plasma/applets/org.kde.windowsmodern.systemtray.so`
+`~/.local/lib*/qt6/plugins/plasma/applets/org.kde.windowsmodern.systemtray.so`
 (or `~/.local/lib/qt6/plugins/...`), Qt will load that local copy instead of
 the system one, and your changes will appear to have no effect. The install
 scripts above remove these stale copies automatically.
@@ -77,7 +83,7 @@ scripts above remove these stale copies automatically.
 After building, the only runtime artifact is:
 
 ```
-/usr/lib64/qt6/plugins/plasma/applets/org.kde.windowsmodern.systemtray.so
+<Qt6 plugin dir>/plasma/applets/org.kde.windowsmodern.systemtray.so
 ```
 
 The QML and config files are compiled into the `.so` via

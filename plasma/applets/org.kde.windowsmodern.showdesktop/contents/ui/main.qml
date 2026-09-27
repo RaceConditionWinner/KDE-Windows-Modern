@@ -11,8 +11,8 @@
     keeps the thin sliver rendering and minimize-all behavior.
 */
 
-import QtQuick 2.15
-import QtQuick.Layouts 1.3
+import QtQuick
+import QtQuick.Layouts
 
 import org.kde.plasma.core as PlasmaCore
 import org.kde.kirigami as Kirigami

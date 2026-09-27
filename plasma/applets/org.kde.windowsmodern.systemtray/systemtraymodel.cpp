@@ -24,26 +24,6 @@
 
 using namespace Qt::StringLiterals;
 
-namespace {
-/*!
- * The Windows 11–style system cluster: Network, Volume and Battery are
- * structural, always-visible tray indicators rather than ordinary
- * user-configurable entries. Keep this list in sync with
- * systemClusterPluginIds in contents/ui/main.qml (QML/C++ can't share a
- * single literal, so both sides carry a matching copy) and with the
- * locked-entry check in contents/ui/ConfigGeneral.qml.
- */
-const QStringList &systemClusterPluginIds()
-{
-    static const QStringList ids{
-        QStringLiteral("org.kde.plasma.networkmanagement"),
-        QStringLiteral("org.kde.plasma.volume"),
-        QStringLiteral("org.kde.plasma.battery"),
-    };
-    return ids;
-}
-}
-
 BaseModel::BaseModel(QPointer<SystemTraySettings> settings, QObject *parent)
     : QAbstractListModel(parent), m_settings(settings),
       m_showAllItems(m_settings ? m_settings->isShowAllItems() : true),
@@ -76,18 +56,6 @@ void BaseModel::onConfigurationChanged() {
 
 Plasma::Types::ItemStatus BaseModel::calculateEffectiveStatus(bool canRender, Plasma::Types::ItemStatus status, QString itemId) const {
     if (!canRender) return Plasma::Types::ItemStatus::HiddenStatus;
-
-    // The system cluster is a structural part of the panel layout (it always
-    // sits next to the ExpanderArrow) rather than an ordinary configurable
-    // entry, so it overrides shownItems/hiddenItems/showAllItems and native
-    // status entirely. Any pre-existing hiddenItems/shownItems entry for one
-    // of these plugin ids is simply superseded here rather than rewritten,
-    // so the invariant holds even against stale configuration from before
-    // this behavior existed.
-    if (systemClusterPluginIds().contains(itemId)) {
-        return Plasma::Types::ItemStatus::ActiveStatus;
-    }
-
     bool forcedShown = m_showAllItems || m_shownItems.contains(itemId);
     bool forcedHidden = m_hiddenItems.contains(itemId);
     bool isDisabledSni = m_settings->isDisabledStatusNotifier(itemId);

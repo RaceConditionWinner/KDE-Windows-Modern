@@ -1,0 +1,19 @@
+{
+    "KPackageStructure": "Plasma/Theme",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Jeysef",
+                "Email": "jeysef@users.noreply.github.com"
+            }
+        ],
+        "Category": "Plasma 6 Themes",
+        "Description": "Windows Modern Dark desktop theme for KDE Plasma 6. Based on Win11OS-kde by yeyushengfan258.",
+        "EnabledByDefault": true,
+        "Id": "Windows-modern-dark",
+        "License": "GPL-3.0-only",
+        "Name": "Windows Modern Dark",
+        "Version": "1.0.0",
+        "Website": "https://github.com/Jeysef/KDE-Windows-Modern"
+    }
+}

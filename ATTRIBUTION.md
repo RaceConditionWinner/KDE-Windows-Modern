@@ -14,8 +14,6 @@ used to create it and the licenses that apply to them.
 |-----------|--------|--------|---------|-------|
 | Win11OS-kde | yeyushengfan258 | <https://github.com/yeyushengfan258/Win11OS-kde> | GPL-3.0 | Base Plasma desktop theme, Aurorae window decorations, Kvantum configs, color schemes, look-and-feel packages |
 | Fluent-kde | vinceliuice | <https://github.com/vinceliuice/Fluent-kde> | GPL-3.0 | Kvantum SVG and configuration base |
-| OnzeMenuKDE | adhec | <https://github.com/adhec/OnzeMenuKDE> | GPL-3.0 / GPL-2.0+ | Start menu ancestor |
-| menu-11-next | Eisteed | <https://github.com/Eisteed/menu-11-next> | GPL-2.0+ | Start menu reference / design basis |
 | Win7 Show Desktop | Zren / Chris Holland | <https://github.com/Zren/plasma-applet-win7showdesktop> | GPL-2.0+ (upstream KDE) | Show Desktop applet reference |
 | KDE Plasma System Tray | KDE e.V. | <https://invent.kde.org/plasma/plasma-workspace> | GPL-2.0+ | C++ system tray containment fork source |
 

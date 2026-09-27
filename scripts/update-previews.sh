@@ -2,10 +2,8 @@
 # ───────────────────────────────────────────────────────────────────
 #  update-previews.sh — regenerate global theme previews from screenshots
 #
-#  Uses View-10 (dark start menu + windows) and View-11 (light start menu +
-#  windows) as the source for the global theme previews shown in System
-#  Settings, since they showcase the panel, window decorations, start menu,
-#  and wallpaper all at once.
+#  Uses the clean dark/light desktop overview screenshots as the source for
+#  the global theme previews shown in System Settings.
 #
 #  Usage: ./scripts/update-previews.sh
 # ───────────────────────────────────────────────────────────────────
@@ -22,8 +20,8 @@ err()  { echo -e "${RED}==>${RESET} $*" >&2; }
 CONVERT="$(command -v magick || command -v convert)"
 [[ -z "$CONVERT" ]] && { err "ImageMagick not found."; exit 1; }
 
-DARK_SRC="$SRC_DIR/View-10.png"
-LIGHT_SRC="$SRC_DIR/View-11.png"
+DARK_SRC="$SRC_DIR/View-1.png"
+LIGHT_SRC="$SRC_DIR/View-2.png"
 
 DARK_DIR="$SRC_DIR/plasma/look-and-feel/org.kde.windowsmodern.dark/contents/previews"
 LIGHT_DIR="$SRC_DIR/plasma/look-and-feel/org.kde.windowsmodern.light/contents/previews"
